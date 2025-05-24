@@ -5,12 +5,13 @@ import (
 
 	"github.com/pewpowder/url-shortener/internal/config"
 	"github.com/pewpowder/url-shortener/internal/entity"
+	"github.com/pewpowder/url-shortener/internal/resources"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func main() {
-	cfg := config.MustLoad(".env")
+	cfg, _ := config.MustLoad(resources.AppConfigFS)
 
 	db, err := gorm.Open(postgres.New(postgres.Config{
 		DSN: cfg.DB.DSN,

@@ -1,0 +1,9 @@
+server:
+  port: ""
+  host: ""
+  timeout: 4s
+  idle_timeout: 60s
+  LOG_LEVEL: info # trace, debug, info, warning, error
+db:
+  DSN: "host= port= user= password= dbname= sslmode=disable"
+# Для production credentials используйте переменные окружения или секреты Kubernetes/CI/CD. Можно добавить поддержку подстановки из env через ${VAR}.

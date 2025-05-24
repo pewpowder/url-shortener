@@ -1,34 +1,84 @@
 package config
 
 import (
+	"embed"
+	"errors"
+	"flag"
+	"fmt"
 	"log"
+	"os"
 	"time"
 
-	"github.com/ilyakaznacheev/cleanenv"
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	Env string `env:"ENV" env-default:"prod"`
-	DB  DBConfig
+	Server ServerConfig
+	DB     DBConfig
+}
+
+type ServerConfig struct {
+	Port        string        `yaml:"port"`
+	Host        string        `yaml:"host"`
+	Timeout     time.Duration `yaml:"timeout"`
+	IdleTimeout time.Duration `yaml:"idle_timeout"`
 }
 
 type DBConfig struct {
-	DSN string `env:"DSN" env-required:"true"`
+	DSN string `yaml:"DSN"`
 }
 
-type HTTPServer struct {
-	Port        string        `env:"address" env-default:"8080"`
-	Host        string        `env:"address" env-default:"localhost"`
-	Timeout     time.Duration `env:"timeout" env-default:"4s"`
-	IdleTimeout time.Duration `env:"idle_timeout" env-default:"60s"`
-}
-
-func MustLoad(configPath string) *Config {
-	var cfg Config
-
-	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
-		log.Fatalf("Can't load config file: %s", err)
+func (cfg *Config) validate() error {
+	// mandatory fields
+	if cfg.DB.DSN == "" {
+		return errors.New("DSN must be setted")
 	}
 
-	return &cfg
+	if cfg.Server.Host == "" {
+		return errors.New("server host must be setted")
+	}
+
+	if cfg.Server.Port == "" {
+		return errors.New("server port must be setted")
+	}
+
+	// default values
+	if cfg.Server.Timeout == 0 {
+		cfg.Server.Timeout = 5 * time.Second
+	}
+
+	if cfg.Server.IdleTimeout == 0 {
+		cfg.Server.IdleTimeout = 5 * time.Second
+	}
+
+	return nil
+}
+
+func MustLoad(yamlFS embed.FS) (*Config, string) {
+	var env *string
+	if value := os.Getenv("env"); value != "" {
+		env = &value
+	} else {
+		env = flag.String("env", DEV, "application enviroment")
+		flag.Parse()
+	}
+
+	fullConfigPath := fmt.Sprintf(APP_CONFIG_PATH, *env)
+
+	file, err := yamlFS.ReadFile(fullConfigPath)
+	if err != nil {
+		log.Fatalf("Can't read config file: %s", err)
+	}
+
+	var config Config
+
+	if err := yaml.Unmarshal(file, &config); err != nil {
+		log.Fatalf("Can't parse config file %s", err)
+	}
+
+	if err := config.validate(); err != nil {
+		log.Fatalf("Invalid config file %s", err)
+	}
+
+	return &config, *env
 }

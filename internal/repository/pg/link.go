@@ -1,4 +1,4 @@
-package pg
+package pgRepo
 
 type LinkRepository struct {
 }

@@ -1,43 +1,102 @@
 package logger
 
 import (
-	"io"
+	"embed"
+	"fmt"
 	"log"
-	"log/slog"
-	"os"
-)
+	"sync"
+	"time"
 
-type LogFormat string
-
-const (
-	FormatJson LogFormat = "json"
-	FormatText LogFormat = "text"
+	"github.com/pewpowder/url-shortener/internal/config"
+	"github.com/rs/zerolog"
+	"gopkg.in/yaml.v3"
+	gormLogger "gorm.io/gorm/logger"
 )
 
 type LoggerConfig struct {
-	Level  slog.Level
-	Format LogFormat
-	Output string
+	Zerolog    ZerologConfig `yaml:"zerolog"`
+	Lumberjack Lumberjack    `yaml:"lumberjack"`
+	Gorm       GormConfig    `yaml:"gorm"`
 }
 
-var Log *slog.Logger
+type ZerologConfig struct {
+	Level         zerolog.Level `yaml:"level"`
+	Outputs       []LogOutput   `yaml:"outputs"`
+	TimeFormat    string        `yaml:"time_format"`
+	WithTimestamp bool          `yaml:"with_timestamp"`
+	WithCaller    bool          `yaml:"with_caller"`
+	BeautifyLogs  bool          `yaml:"beautify_logs"`
+}
 
-func InitLogger(cfg *LoggerConfig) {
-	var w io.Writer = os.Stdout
-	if cfg.Output != "stdout" && cfg.Output != "" {
-		f, err := os.OpenFile(cfg.Output, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Fatalf("Can't open the file %s used fallback logger output", cfg.Output)
-		}
-		w = f
+type LogOutput struct {
+	Type string `yaml:"type"`
+	Name string `yaml:"name"`
+}
+
+type Lumberjack struct {
+	MaxSize    int    `yaml:"max_size"`
+	MaxAge     int    `yaml:"max_age"`
+	MaxBackups int    `yaml:"max_backups"`
+	Compress   bool   `yaml:"compress"`
+	Directory  string `yaml:"directory"`
+}
+
+type GormConfig struct {
+	SlowThreshold             time.Duration       `yaml:"slow_threshold"`
+	Colorful                  bool                `yaml:"colorful"`
+	IgnoreRecordNotFoundError bool                `yaml:"ignore_record_not_found_error"`
+	ParameterizedQueries      bool                `yaml:"parameterized_queries"`
+	LogLevel                  gormLogger.LogLevel `yaml:"log_level"`
+}
+
+var (
+	once sync.Once
+	zlog *zerolog.Logger
+)
+
+func InitLogger(yamlFS embed.FS, env string) {
+	once.Do(func() {
+		cfg := GetLoggerConfig(yamlFS, env)
+		set(configureZerolog(cfg))
+	})
+}
+
+func GetLoggerConfig(yamlFS embed.FS, env string) *LoggerConfig {
+	file, err := yamlFS.ReadFile(fmt.Sprintf(config.ZEROLOG_CONFIG_PATH, env))
+
+	if err != nil {
+		log.Fatalf("Error during reading the logger config file: %s", err)
 	}
 
-	switch cfg.Format {
-	case FormatJson:
-		Log = slog.New(slog.NewJSONHandler(w, &slog.HandlerOptions{Level: cfg.Level}))
-	case FormatText:
-		Log = slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: cfg.Level}))
-	default:
-		Log = slog.New(slog.NewJSONHandler(w, &slog.HandlerOptions{Level: cfg.Level}))
+	var cfg LoggerConfig
+
+	err = yaml.Unmarshal(file, &cfg)
+
+	if err != nil {
+		log.Fatalf("Error during decoding the logger config file: %s", err)
+	}
+
+	return &cfg
+}
+
+func set(zerolog *zerolog.Logger) {
+	if zlog != nil {
+		return
+	}
+
+	zlog = zerolog
+}
+
+func Get() *zerolog.Logger {
+	return zlog
+}
+
+func (l *LoggerConfig) ToGormConfig(gormCfg *GormConfig) *gormLogger.Config {
+	return &gormLogger.Config{
+		SlowThreshold:             gormCfg.SlowThreshold,
+		Colorful:                  gormCfg.Colorful,
+		IgnoreRecordNotFoundError: gormCfg.IgnoreRecordNotFoundError,
+		ParameterizedQueries:      gormCfg.ParameterizedQueries,
+		LogLevel:                  gormCfg.LogLevel,
 	}
 }

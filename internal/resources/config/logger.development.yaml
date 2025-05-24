@@ -1,0 +1,23 @@
+zerolog:
+  level: 1
+  outputs:
+    - type: console
+      name: stdout
+    - type: file
+      name: app.log
+  time_format: "2006-01-02T15:04:05Z07:00" # RFC3339
+  with_timestamp: true
+  with_caller: true
+  beautify_logs: true
+lumberjack:
+    max_size: 100
+    max_age: 7
+    max_backups: 3
+    compress: false
+    directory: logs
+gorm:
+  slow_threshold: 200ms
+  colorful: false
+  ignore_record_not_found_error: false
+  parameterized_queries: false
+  log_evel: 4          
