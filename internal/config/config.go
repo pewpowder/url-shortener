@@ -18,7 +18,7 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port        string        `yaml:"port"`
+	Port        int           `yaml:"port"`
 	Host        string        `yaml:"host"`
 	Timeout     time.Duration `yaml:"timeout"`
 	IdleTimeout time.Duration `yaml:"idle_timeout"`
@@ -38,7 +38,7 @@ func (cfg *Config) validate() error {
 		return errors.New("server host must be setted")
 	}
 
-	if cfg.Server.Port == "" {
+	if cfg.Server.Port == 0 {
 		return errors.New("server port must be setted")
 	}
 

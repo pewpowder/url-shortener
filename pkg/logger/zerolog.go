@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,8 +12,13 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-func configureZerolog(cfg *LoggerConfig) *zerolog.Logger {
-	writers := getWriters(cfg)
+func configureZerolog(cfg *LoggerConfig) (*zerolog.Logger, error) {
+	writers, err := getWriters(cfg)
+
+	if err != nil {
+		return nil, err
+	}
+
 	zl := zerolog.New(io.MultiWriter(writers...))
 
 	if cfg.Zerolog.TimeFormat != "" {
@@ -31,10 +37,10 @@ func configureZerolog(cfg *LoggerConfig) *zerolog.Logger {
 		zl = zl.With().Caller().Logger()
 	}
 
-	return &zl
+	return &zl, nil
 }
 
-func getWriters(cfg *LoggerConfig) []io.Writer {
+func getWriters(cfg *LoggerConfig) ([]io.Writer, error) {
 	var writers []io.Writer
 
 	for _, output := range cfg.Zerolog.Outputs {
@@ -42,14 +48,20 @@ func getWriters(cfg *LoggerConfig) []io.Writer {
 		case "console":
 			writers = append(writers, getConsoleWriter(&cfg.Zerolog, output.Name))
 		case "file":
-			writers = append(writers, getFileWriter(&cfg.Lumberjack, output.Name))
+			writer, err := getFileWriter(&cfg.Lumberjack, output.Name)
+
+			if err != nil {
+				return nil, err
+			}
+
+			writers = append(writers, writer)
 		default:
 			log.Printf("Unknown output type: %s. Defaulting to console.", output)
 			writers = append(writers, getConsoleWriter(&cfg.Zerolog, "stdout"))
 		}
 	}
 
-	return writers
+	return writers, nil
 }
 
 func getConsoleWriter(cfg *ZerologConfig, name string) io.Writer {
@@ -73,9 +85,9 @@ func getConsoleWriter(cfg *ZerologConfig, name string) io.Writer {
 	return out
 }
 
-func getFileWriter(rotateCfg *Lumberjack, name string) io.Writer {
+func getFileWriter(rotateCfg *Lumberjack, name string) (io.Writer, error) {
 	if err := os.MkdirAll(rotateCfg.Directory, 0755); err != nil {
-		log.Fatalf("Error during creating the directory (%s) for log file: %s", rotateCfg.Directory, err)
+		return nil, fmt.Errorf("can't create the directory (%s) for a log file: %w", rotateCfg.Directory, err)
 	}
 
 	return &lumberjack.Logger{
@@ -84,14 +96,5 @@ func getFileWriter(rotateCfg *Lumberjack, name string) io.Writer {
 		MaxAge:     rotateCfg.MaxAge,
 		MaxBackups: rotateCfg.MaxBackups,
 		Compress:   rotateCfg.Compress,
-	}
+	}, nil
 }
-
-/*
--------- What I want from logger...
-1. I can set up logger with .env variables
-2. It includes files rotation (for example with lamberjack)
-3. I can easy use this logger in any place of my code (without pass it like a parameter)
-4. I don't have deep chain of calls (logger.GetLogger().With().Timestamp().Info().Msg() ...)
-5. I can replace gorm logger with my implementation of zerolog logger
-*/

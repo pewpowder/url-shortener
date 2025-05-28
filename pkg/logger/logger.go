@@ -3,7 +3,6 @@ package logger
 import (
 	"embed"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -50,22 +49,39 @@ type GormConfig struct {
 }
 
 var (
-	once sync.Once
-	zlog *zerolog.Logger
+	once      sync.Once
+	zlog      *zerolog.Logger
+	loggerCfg *LoggerConfig
 )
 
-func InitLogger(yamlFS embed.FS, env string) {
+func InitLogger(yamlFS embed.FS, env string) error {
+	var initError error
 	once.Do(func() {
-		cfg := GetLoggerConfig(yamlFS, env)
-		set(configureZerolog(cfg))
+		cfg, err := getLoggerConfig(yamlFS, env)
+
+		if err != nil {
+			initError = err
+			return
+		}
+
+		zl, err := configureZerolog(cfg)
+
+		if err != nil {
+			initError = err
+			return
+		}
+
+		setLogger(zl)
+		setLoggerConfig(cfg)
 	})
+	return initError
 }
 
-func GetLoggerConfig(yamlFS embed.FS, env string) *LoggerConfig {
+func getLoggerConfig(yamlFS embed.FS, env string) (*LoggerConfig, error) {
 	file, err := yamlFS.ReadFile(fmt.Sprintf(config.ZEROLOG_CONFIG_PATH, env))
 
 	if err != nil {
-		log.Fatalf("Error during reading the logger config file: %s", err)
+		return nil, fmt.Errorf("can't read logger config: %w", err)
 	}
 
 	var cfg LoggerConfig
@@ -73,22 +89,10 @@ func GetLoggerConfig(yamlFS embed.FS, env string) *LoggerConfig {
 	err = yaml.Unmarshal(file, &cfg)
 
 	if err != nil {
-		log.Fatalf("Error during decoding the logger config file: %s", err)
+		return nil, fmt.Errorf("can't decode logger config: %w", err)
 	}
 
-	return &cfg
-}
-
-func set(zerolog *zerolog.Logger) {
-	if zlog != nil {
-		return
-	}
-
-	zlog = zerolog
-}
-
-func Get() *zerolog.Logger {
-	return zlog
+	return &cfg, nil
 }
 
 func (l *LoggerConfig) ToGormConfig(gormCfg *GormConfig) *gormLogger.Config {
@@ -99,4 +103,28 @@ func (l *LoggerConfig) ToGormConfig(gormCfg *GormConfig) *gormLogger.Config {
 		ParameterizedQueries:      gormCfg.ParameterizedQueries,
 		LogLevel:                  gormCfg.LogLevel,
 	}
+}
+
+func setLogger(zerolog *zerolog.Logger) {
+	if zlog != nil {
+		return
+	}
+
+	zlog = zerolog
+}
+
+func setLoggerConfig(cfg *LoggerConfig) {
+	if loggerCfg != nil {
+		return
+	}
+
+	loggerCfg = cfg
+}
+
+func Get() *zerolog.Logger {
+	return zlog
+}
+
+func GetConfig() *LoggerConfig {
+	return loggerCfg
 }

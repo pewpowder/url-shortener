@@ -1,5 +1,5 @@
 server:
-  port: "8080"
+  port: 8080
   host: "localhost"
   timeout: 4s # seconds
   idle_timeout: 60s # seconds
