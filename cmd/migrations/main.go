@@ -18,12 +18,12 @@ func main() {
 	}), &gorm.Config{})
 
 	if err != nil {
-		log.Fatalf("Can't connect to DB: %s", err)
+		log.Fatalf("can't connect to DB for migrations: %s", err)
 	}
 
 	if err := db.AutoMigrate(&entity.Link{}, &entity.LinkStats{}, &entity.Visit{}); err != nil {
-		log.Fatalf("Migration failed: %v", err)
+		log.Fatalf("migration failed: %v", err)
 	}
 
-	log.Default().Println("Migrations executed successfully")
+	log.Default().Println("migrations executed successfully")
 }

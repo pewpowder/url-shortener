@@ -8,11 +8,13 @@ import (
 
 type Link struct {
 	gorm.Model
-	ShortCode   string      `json:"short_code" gorm:"uniqueIndex"`
-	OriginalURL string      `json:"original_url"`
-	ExpiresAt   time.Time   `json:"expires_at,omitempty"`
-	IsActive    bool        `json:"is_active"`
-	Stats       []LinkStats `json:"stats" gorm:"type:jsonb;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-	Visits      []Visit     `json:"visit" gorm:"type:jsonb;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-	// UserID      uint        `json:"user_id"`
+	ShortCode    string     `gorm:"uniqueIndex;size:10;check:short_code <> ''"`
+	OriginalURL  string     `gorm:"not null;check:original_url <> ''"`
+	ExpiresAt    *time.Time `gorm:"index"`
+	IsActive     bool       `gorm:"default:true"`
+	IsPrivate    bool       `gorm:"default:false"`
+	UserID       uint       // Integration with Auth-Service
+	PasswordHash *string    `gorm:"size:64"` // PasswordHash for private links
+	MaxClicks    int        `gorm:"default:0"`
+	Tags         []Tag      `gorm:"many2many:link_tags;"`
 }

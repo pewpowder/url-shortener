@@ -2,16 +2,18 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os/signal"
 	"syscall"
 
+	"github.com/gin-gonic/gin"
 	"github.com/pewpowder/url-shortener/internal/config"
+	"github.com/pewpowder/url-shortener/internal/container"
+	"github.com/pewpowder/url-shortener/internal/repository"
 	"github.com/pewpowder/url-shortener/internal/resources"
+	"github.com/pewpowder/url-shortener/internal/router"
 	"github.com/pewpowder/url-shortener/pkg/logger"
-	"github.com/rs/zerolog"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 func main() {
@@ -26,36 +28,21 @@ func main() {
 		log.Fatalf("can't init logger: %s", err)
 	}
 
-	connectDatabase(cfg.DB.DSN, logger.Get(), logger.GetConfig())
+	db, err := repository.ConnectDatabase(cfg.DB.DSN, logger.Get(), logger.GetConfig())
 
 	if err != nil {
 		logger.Get().Fatal().Err(err).Msg("failed to connect to database")
 	}
 
-	logger.Get().Info().Int("port", cfg.Server.Port).Msg("server started")
+	repo := repository.NewRepository(db)
+
+	container := container.NewContainer(repo, cfg, env)
+
+	g := gin.Default()
+
+	router.Init(g, container)
+
+	go g.Run(fmt.Sprintf(":%d", cfg.Server.Port))
 
 	<-ctx.Done()
-
-	// if err := server.Shutdown(context.Background()); err != nil {
-	// 	log.Fatalf("could not shutdown: %v\n", err)
-	// }
-
-	// storage postgreSQL
-	// router chi, "'chi render' google it"
-}
-
-func connectDatabase(DSN string, zl *zerolog.Logger, loggerCfg *logger.LoggerConfig) (*gorm.DB, error) {
-	gormCfg := &gorm.Config{
-		Logger: logger.NewGormLogger(zl, loggerCfg.ToGormConfig(&loggerCfg.Gorm)),
-	}
-
-	db, err := gorm.Open(postgres.New(postgres.Config{
-		DSN: DSN,
-	}), gormCfg) // TODO: Compare with default gorm logger in the future
-
-	if err != nil {
-		return nil, err
-	}
-
-	return db, nil
 }
