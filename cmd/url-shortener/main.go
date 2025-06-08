@@ -10,14 +10,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pewpowder/url-shortener/internal/config"
 	"github.com/pewpowder/url-shortener/internal/container"
-	"github.com/pewpowder/url-shortener/internal/repository"
 	"github.com/pewpowder/url-shortener/internal/resources"
 	"github.com/pewpowder/url-shortener/internal/router"
 	"github.com/pewpowder/url-shortener/pkg/logger"
+	"github.com/rs/zerolog"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	c, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	cfg, env := config.MustLoad(resources.AppConfigFS)
@@ -28,21 +30,37 @@ func main() {
 		log.Fatalf("can't init logger: %s", err)
 	}
 
-	db, err := repository.ConnectDatabase(cfg.DB.DSN, logger.Get(), logger.GetConfig())
+	db, err := connectDatabase(cfg.DB.DSN, logger.Get(), logger.GetConfig())
 
 	if err != nil {
 		logger.Get().Fatal().Err(err).Msg("failed to connect to database")
 	}
 
-	repo := repository.NewRepository(db)
+	container := container.NewContainer(db, cfg, env)
 
-	container := container.NewContainer(repo, cfg, env)
-
+	gin.DebugPrintRouteFunc = logger.GinDebugPrintRoute
+	gin.DebugPrintFunc = logger.GinDebugPrint
 	g := gin.Default()
 
 	router.Init(g, container)
 
 	go g.Run(fmt.Sprintf(":%d", cfg.Server.Port))
 
-	<-ctx.Done()
+	<-c.Done()
+}
+
+func connectDatabase(DSN string, zl *zerolog.Logger, loggerCfg *logger.LoggerConfig) (*gorm.DB, error) {
+	gormCfg := &gorm.Config{
+		Logger: logger.NewGormLogger(zl, loggerCfg.ToGormConfig(&loggerCfg.Gorm)),
+	}
+
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		DSN: DSN,
+	}), gormCfg) // TODO: Compare with default gorm logger in the future
+
+	if err != nil {
+		return nil, err
+	}
+
+	return db, nil
 }

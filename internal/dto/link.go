@@ -36,6 +36,14 @@ type LinkList struct {
 	CreatedAt   *string `json:"created_at" validate:"required"`
 }
 
+type LinkListQuery struct {
+	Tags      []string `form:"tags"`
+	IsPrivate *bool    `form:"is_private"`
+	IsActive  *bool    `form:"is_active"`
+	Expired   *bool    `form:"expired"`
+	UserID    *uint    `form:"user_id"`
+}
+
 type LinkDetails struct {
 	ShortCode   string  `json:"short_code" validate:"required"`
 	OriginalURL string  `json:"original_url" validate:"required"`
@@ -97,24 +105,32 @@ func FromUpdateLink(updateLink *UpdateLink, passHash *string, tags []entity.Tag)
 	return link
 }
 
-func ToLinkList(link *entity.Link) *LinkList {
-	tags := make([]Tag, len(link.Tags))
+func ToLinkList(links []entity.Link) []LinkList {
+	var linkList []LinkList
 
-	for _, tag := range link.Tags {
-		tags = append(tags, ToTag(tag))
+	for _, link := range links {
+		tags := make([]Tag, len(link.Tags))
+
+		for _, tag := range link.Tags {
+			tags = append(tags, ToTag(tag))
+		}
+
+		expiresAt := link.ExpiresAt.Format(config.TIME_FORMAT)
+		createdAt := link.CreatedAt.Format(config.TIME_FORMAT)
+
+		linkListItem := LinkList{
+			ShortCode:   link.ShortCode,
+			OriginalURL: link.OriginalURL,
+			ExpiresAt:   &expiresAt,
+			IsActive:    link.IsActive,
+			CreatedAt:   &createdAt,
+			Tags:        tags,
+		}
+
+		linkList = append(linkList, linkListItem)
 	}
 
-	expiresAt := link.ExpiresAt.Format(config.TIME_FORMAT)
-	createdAt := link.CreatedAt.Format(config.TIME_FORMAT)
-
-	return &LinkList{
-		ShortCode:   link.ShortCode,
-		OriginalURL: link.OriginalURL,
-		ExpiresAt:   &expiresAt,
-		IsActive:    link.IsActive,
-		CreatedAt:   &createdAt,
-		Tags:        tags,
-	}
+	return linkList
 }
 
 func ToLinkDetails(link *entity.Link) *LinkDetails {

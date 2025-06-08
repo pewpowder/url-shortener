@@ -2,31 +2,31 @@ package container
 
 import (
 	"github.com/pewpowder/url-shortener/internal/config"
-	"github.com/pewpowder/url-shortener/internal/repository"
+	"gorm.io/gorm"
 )
 
 type Container interface {
-	GetRepository() repository.Repository
+	GetDB() *gorm.DB
 	GetConfig() *config.Config
 	GetEnv() string
 }
 
 type container struct {
-	repository repository.Repository
-	config     *config.Config
-	env        string
+	db     *gorm.DB
+	config *config.Config
+	env    string
 }
 
-func NewContainer(repo repository.Repository, config *config.Config, env string) Container {
+func NewContainer(repo *gorm.DB, config *config.Config, env string) Container {
 	return &container{
-		repository: repo,
-		config:     config,
-		env:        env,
+		db:     repo,
+		config: config,
+		env:    env,
 	}
 }
 
-func (c *container) GetRepository() repository.Repository {
-	return c.repository
+func (c *container) GetDB() *gorm.DB {
+	return c.db
 }
 
 func (c *container) GetConfig() *config.Config {

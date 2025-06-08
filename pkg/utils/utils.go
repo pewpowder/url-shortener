@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pewpowder/url-shortener/internal/config"
@@ -27,4 +28,13 @@ func ParseOptionalTime(value *string) (*time.Time, error) {
 	// Normalize to UTC and ensure nanosecond precision is stripped
 	utcTime := parsedTime.UTC().Round(time.Second)
 	return &utcTime, nil
+}
+
+// Gin default doesn't split comma-separated strings into slcies (str1,str2,str3... will not be splitted into slice)
+func GinSplitString(data []string) []string {
+	if len(data) == 1 {
+		return strings.Split(data[0], ",")
+	}
+
+	return data
 }

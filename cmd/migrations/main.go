@@ -21,7 +21,7 @@ func main() {
 		log.Fatalf("can't connect to DB for migrations: %s", err)
 	}
 
-	if err := db.AutoMigrate(&entity.Link{}, &entity.LinkStats{}, &entity.Visit{}); err != nil {
+	if err := db.AutoMigrate(&entity.Link{}, &entity.LinkStats{}, &entity.Visit{}, &entity.Tag{}); err != nil {
 		log.Fatalf("migration failed: %v", err)
 	}
 

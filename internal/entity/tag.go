@@ -1,7 +1,9 @@
 package entity
 
+import "gorm.io/gorm"
+
 type Tag struct {
-	ID    uint   `gorm:"primaryKey"`
+	gorm.Model
 	Name  string `gorm:"uniqueIndex"`
 	Color string `gorm:"size:7;default:'#4f46e5'"`
 }

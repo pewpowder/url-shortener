@@ -15,8 +15,13 @@ func Init(gin *gin.Engine, container container.Container) {
 func setLinkController(router *gin.Engine, container container.Container) {
 	linkController := controller.NewLinkController(container)
 
+	router.GET("/links", linkController.GetLinks)
+	router.GET("/links/:id", linkController.GetLinkDetails)
+
 	router.POST("/links", linkController.CreateLink)
+
 	router.PUT("/links", linkController.UpdateLink)
+
 	router.DELETE("/links/:id", linkController.DeleteLink)
 }
 

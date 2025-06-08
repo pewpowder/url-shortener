@@ -31,3 +31,6 @@ volumes/
 # other
 logs
 can-be-better.txt
+tmp
+logs
+
