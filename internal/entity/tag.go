@@ -1,10 +1,12 @@
 package entity
 
-import "gorm.io/gorm"
+import (
+	"gorm.io/gorm"
+)
 
 type Tag struct {
 	gorm.Model
-	Name  string `gorm:"uniqueIndex"`
+	Name  string `gorm:"primaryKey"`
 	Color string `gorm:"size:7;default:'#4f46e5'"`
 }
 

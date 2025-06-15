@@ -14,7 +14,7 @@ type Link struct {
 	IsActive     bool       `gorm:"default:true"`
 	IsPrivate    bool       `gorm:"default:false"`
 	UserID       uint       `gorm:"index"`   // Integration with Auth-Service
-	PasswordHash *string    `gorm:"size:64"` // PasswordHash for private links
+	PasswordHash *string    `gorm:"size:64"` // PasswordHash for private links. Can be null.
 	MaxClicks    int        `gorm:"default:0"`
 	Tags         []Tag      `gorm:"many2many:link_tags;"`
 }

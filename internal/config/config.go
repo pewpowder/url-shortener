@@ -18,10 +18,11 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port        int           `yaml:"port"`
-	Host        string        `yaml:"host"`
-	Timeout     time.Duration `yaml:"timeout"`
-	IdleTimeout time.Duration `yaml:"idle_timeout"`
+	Port           int           `yaml:"port"`
+	Host           string        `yaml:"host"`
+	Timeout        time.Duration `yaml:"timeout"`
+	IdleTimeout    time.Duration `yaml:"idle_timeout"`
+	AuthServiceURL string        `yaml:"auth_service_url"`
 }
 
 type DBConfig struct {
@@ -31,15 +32,19 @@ type DBConfig struct {
 func (cfg *Config) validate() error {
 	// mandatory fields
 	if cfg.DB.DSN == "" {
-		return errors.New("DSN must be setted")
+		return errors.New("DSN must be set")
 	}
 
 	if cfg.Server.Host == "" {
-		return errors.New("server host must be setted")
+		return errors.New("server host must be set")
 	}
 
 	if cfg.Server.Port == 0 {
-		return errors.New("server port must be setted")
+		return errors.New("server port must be set")
+	}
+
+	if cfg.Server.AuthServiceURL == "" {
+		return errors.New("auth service url must be set")
 	}
 
 	// default values
@@ -59,7 +64,7 @@ func MustLoad(yamlFS embed.FS) (*Config, string) {
 	if value := os.Getenv("env"); value != "" {
 		env = &value
 	} else {
-		env = flag.String("env", DEV, "application enviroment")
+		env = flag.String("env", DEV, "application environment")
 		flag.Parse()
 	}
 

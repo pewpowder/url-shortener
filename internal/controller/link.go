@@ -1,11 +1,13 @@
 package controller
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/pewpowder/url-shortener/internal/container"
 	"github.com/pewpowder/url-shortener/internal/dto"
 	"github.com/pewpowder/url-shortener/internal/service"
-	"github.com/pewpowder/url-shortener/pkg/errors"
+	se "github.com/pewpowder/url-shortener/pkg/errors"
 	"github.com/pewpowder/url-shortener/pkg/utils"
 )
 
@@ -32,14 +34,17 @@ func NewLinkController(container container.Container) LinkController {
 func (lc *linkController) GetLinks(c *gin.Context) {
 	var query dto.LinkListQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		errors.InvalidQueryParams(c, err)
+		se.InvalidQueryParams(c, err)
 		return
 	}
-	query.Tags = utils.GinSplitString(query.Tags)
+	if query.Tags != nil {
+		tags := utils.GinSplitString(*query.Tags)
+		query.Tags = &tags
+	}
 
-	links, err := lc.service.GetLinks(&query)
-
+	links, err := lc.service.GetLinks(c.Request.Context(), query)
 	if err != nil {
+		se.HandleError(c, err)
 		return
 	}
 
@@ -52,11 +57,19 @@ func (lc *linkController) GetLinkDetails(c *gin.Context) {
 }
 
 func (lc *linkController) CreateLink(c *gin.Context) {
-	var body dto.CreateLink
-	if err := c.ShouldBind(&body); err != nil {
-		errors.InvalidBody(c, err)
+	var data dto.CreateLink
+	if err := c.ShouldBind(&data); err != nil {
+		se.InvalidRequestData(c, err)
 		return
 	}
+
+	link, err := lc.service.CreateLink(c.Request.Context(), data)
+	if err != nil {
+		se.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, dto.ToLinkDetails(link))
 }
 
 func (lc *linkController) UpdateLink(c *gin.Context) {
@@ -64,3 +77,5 @@ func (lc *linkController) UpdateLink(c *gin.Context) {
 
 func (lc *linkController) DeleteLink(c *gin.Context) {
 }
+
+// TODO: Determine where i should set user_id

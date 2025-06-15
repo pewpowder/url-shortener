@@ -4,6 +4,7 @@ server:
   timeout: 4s
   idle_timeout: 60s
   LOG_LEVEL: info # trace, debug, info, warning, error
+  auth_service_url: "http://auth-service:8080"
 db:
   DSN: "host= port= user= password= dbname= sslmode=disable"
 # Для production credentials используйте переменные окружения или секреты Kubernetes/CI/CD. Можно добавить поддержку подстановки из env через ${VAR}.

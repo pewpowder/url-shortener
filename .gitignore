@@ -33,4 +33,5 @@ logs
 can-be-better.txt
 tmp
 logs
-
+.cursor
+.vscode

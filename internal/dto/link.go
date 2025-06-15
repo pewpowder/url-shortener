@@ -1,6 +1,9 @@
 package dto
 
 import (
+	"errors"
+	"time"
+
 	"github.com/pewpowder/url-shortener/internal/config"
 	"github.com/pewpowder/url-shortener/internal/entity"
 	"github.com/pewpowder/url-shortener/pkg/utils"
@@ -8,75 +11,81 @@ import (
 
 type CreateLink struct {
 	URL       string   `json:"url" binding:"required,url"`
-	IsPrivate *bool    `json:"is_private"`
-	IsActive  *bool    `json:"is_active"`                                                                 // Optional, defaults to true
-	Password  string   `json:"password" binding:"required_if=is_private true min=6,containsany=!@#$%^&*"` // Optional for private links
-	MaxClicks int      `json:"max_clicks" binding:"gte=0"`                                                // Optional, 0 means no limit
-	Tags      []string `json:"tags" binding:"max=10"`                                                     // Optional, tags for the link
-	ExpiresAt *string  `json:"expires_at" binding:"datetime=2006-01-02T15:04:05Z07:00"`                   // Optional, ISO 8601 format
+	IsPrivate bool     `json:"is_private" binding:"default=false"`
+	IsActive  bool     `json:"is_active" binding:"default=true"`
+	Password  string   `json:"password" binding:"required_if=is_private true min=6,containsany=!@#$%^&*"`
+	MaxClicks int      `json:"max_clicks" binding:"gte=0,default=0"` // 0 means no limit
+	Tags      []string `json:"tags" binding:"max=10"`
+	ExpiresAt *string  `json:"expires_at" binding:"datetime=2006-01-02T15:04:05Z07:00"`
 }
 
 type UpdateLink struct {
-	URL       string    `json:"url" binding:"url"`
+	URL       *string   `json:"url" binding:"url"`
 	IsPrivate *bool     `json:"is_private"`
 	IsActive  *bool     `json:"is_active"`
-	Password  string    `json:"password" binding:"required_if=is_private true min=6,containsany=!@#$%^&*"`
+	Password  *string   `json:"password" binding:"required_if=is_private true min=6,containsany=!@#$%^&*"`
 	MaxClicks *int      `json:"max_clicks" binding:"gte=0"`
 	Tags      *[]string `json:"tags" binding:"max=10"`
 	ExpiresAt *string   `json:"expires_at" binding:"datetime=2006-01-02T15:04:05Z07:00"`
 }
 
-// DTO for retrive validates only in development mode
-type LinkList struct {
-	ShortCode   string  `json:"short_code" validate:"required"`
-	OriginalURL string  `json:"original_url" validate:"required"`
-	IsActive    bool    `json:"is_active" validate:"required"`
-	Tags        []Tag   `json:"tags"`
-	ExpiresAt   *string `json:"expires_at"`
-	CreatedAt   *string `json:"created_at" validate:"required"`
+type LinkListQuery struct {
+	Tags      *[]string `form:"tags"`
+	IsPrivate *bool     `form:"is_private"`
+	IsActive  *bool     `form:"is_active"`
+	Expired   *bool     `form:"expired"`
 }
 
-type LinkListQuery struct {
-	Tags      []string `form:"tags"`
-	IsPrivate *bool    `form:"is_private"`
-	IsActive  *bool    `form:"is_active"`
-	Expired   *bool    `form:"expired"`
-	UserID    *uint    `form:"user_id"`
+// DTO for response validates only in development mode
+type LinkList struct {
+	ID          uint           `json:"id" validate:"required"`
+	ShortCode   string         `json:"short_code" validate:"required"`
+	OriginalURL string         `json:"original_url" validate:"required"`
+	IsActive    bool           `json:"is_active" validate:"required"`
+	Tags        []TagEmbedding `json:"tags"`
+	CreatedAt   string         `json:"created_at" validate:"required"`
+	UpdatedAt   string         `json:"updated_at" validate:"required"`
+	ExpiresAt   *string        `json:"expires_at"`
 }
 
 type LinkDetails struct {
-	ShortCode   string  `json:"short_code" validate:"required"`
-	OriginalURL string  `json:"original_url" validate:"required"`
-	IsActive    bool    `json:"is_active" validate:"required"`
-	IsPrivate   bool    `json:"is_private" validate:"required"`
-	UserID      uint    `json:"user_id"` // validate:"required"
-	MaxClicks   int     `json:"max_clicks" validate:"required"`
-	Tags        []Tag   `json:"tags"`
-	ExpiresAt   *string `json:"expires_at"`
-	CreatedAt   *string `json:"created_at" validate:"required"`
-	UpdatedAt   *string `json:"updated_at" validate:"required"`
-	DeletedAt   *string `json:"deleted_at"`
+	ID          uint           `json:"id" validate:"required"`
+	ShortCode   string         `json:"short_code" validate:"required"`
+	OriginalURL string         `json:"original_url" validate:"required"`
+	IsActive    bool           `json:"is_active" validate:"required"`
+	IsPrivate   bool           `json:"is_private" validate:"required"`
+	UserID      uint           `json:"user_id"` // validate:"required"
+	MaxClicks   int            `json:"max_clicks" validate:"required"`
+	Tags        []TagEmbedding `json:"tags"`
+	CreatedAt   string         `json:"created_at" validate:"required"`
+	UpdatedAt   string         `json:"updated_at" validate:"required"`
+	ExpiresAt   *string        `json:"expires_at"`
+	DeletedAt   *string        `json:"deleted_at"`
 }
 
-func FromCreateLink(createLink *CreateLink, passHash *string, tags []entity.Tag) (*entity.Link, error) {
-	expiresAt, _ := utils.ParseOptionalTime(createLink.ExpiresAt) // validates with DTO tags
+func FromCreateLink(createLink CreateLink, passHash *string, tags []entity.Tag) (entity.Link, error) {
+	expiresAt, _ := utils.ParseOptionalTime(createLink.ExpiresAt)
 
-	return &entity.Link{
+	if expiresAt != nil && expiresAt.Before(time.Now()) {
+		return entity.Link{}, errors.New("expires_at must be non past value")
+	}
+
+	return entity.Link{
 		OriginalURL:  createLink.URL,
-		IsPrivate:    utils.DerefBool(createLink.IsPrivate, false),
-		IsActive:     utils.DerefBool(createLink.IsActive, true),
+		IsPrivate:    createLink.IsPrivate,
+		IsActive:     createLink.IsActive,
 		PasswordHash: passHash,
 		MaxClicks:    createLink.MaxClicks,
 		Tags:         tags,
-		ExpiresAt:    expiresAt, // TODO: check that time is not the past
+		ExpiresAt:    expiresAt,
 	}, nil
 }
 
-func FromUpdateLink(updateLink *UpdateLink, passHash *string, tags []entity.Tag) *entity.Link {
-	link := &entity.Link{}
+func FromUpdateLink(updateLink UpdateLink, passHash *string, tags []entity.Tag) (entity.Link, error) {
+	link := entity.Link{}
 
-	if updateLink.URL != "" {
-		link.OriginalURL = updateLink.URL
+	if updateLink.URL != nil {
+		link.OriginalURL = *updateLink.URL
 	}
 
 	if updateLink.IsPrivate != nil {
@@ -96,47 +105,51 @@ func FromUpdateLink(updateLink *UpdateLink, passHash *string, tags []entity.Tag)
 	}
 
 	if updateLink.ExpiresAt != nil {
-		parsedTime, _ := utils.ParseOptionalTime(updateLink.ExpiresAt) // validates with DTO tags
+		parsedTime, _ := utils.ParseOptionalTime(updateLink.ExpiresAt)
+		if parsedTime != nil && parsedTime.Before(time.Now()) {
+			return entity.Link{}, errors.New("expires_at must be non past value")
+		}
+
 		link.ExpiresAt = parsedTime
 	}
 
 	link.PasswordHash = passHash
 
-	return link
+	return link, nil
 }
 
 func ToLinkList(links []entity.Link) []LinkList {
 	var linkList []LinkList
 
 	for _, link := range links {
-		tags := make([]Tag, len(link.Tags))
+		tags := make([]TagEmbedding, len(link.Tags))
 
 		for _, tag := range link.Tags {
-			tags = append(tags, ToTag(tag))
+			tags = append(tags, ToTagEmbedding(tag))
 		}
 
 		expiresAt := link.ExpiresAt.Format(config.TIME_FORMAT)
 		createdAt := link.CreatedAt.Format(config.TIME_FORMAT)
 
-		linkListItem := LinkList{
+		item := LinkList{
 			ShortCode:   link.ShortCode,
 			OriginalURL: link.OriginalURL,
-			ExpiresAt:   &expiresAt,
 			IsActive:    link.IsActive,
-			CreatedAt:   &createdAt,
+			CreatedAt:   createdAt,
 			Tags:        tags,
+			ExpiresAt:   &expiresAt,
 		}
 
-		linkList = append(linkList, linkListItem)
+		linkList = append(linkList, item)
 	}
 
 	return linkList
 }
 
-func ToLinkDetails(link *entity.Link) *LinkDetails {
-	tags := make([]Tag, len(link.Tags))
+func ToLinkDetails(link entity.Link) LinkDetails {
+	tags := make([]TagEmbedding, len(link.Tags))
 	for _, tag := range link.Tags {
-		tags = append(tags, ToTag(tag))
+		tags = append(tags, ToTagEmbedding(tag))
 	}
 
 	var deletedAt string
@@ -144,11 +157,16 @@ func ToLinkDetails(link *entity.Link) *LinkDetails {
 		deletedAt = link.DeletedAt.Time.Format(config.TIME_FORMAT)
 	}
 
-	expiresAt := link.ExpiresAt.Format(config.TIME_FORMAT)
+	var expiresAt *string
+	if link.ExpiresAt != nil {
+		formatted := link.ExpiresAt.Format(config.TIME_FORMAT)
+		expiresAt = &formatted
+	}
+
 	createdAt := link.CreatedAt.Format(config.TIME_FORMAT)
 	updatedAt := link.UpdatedAt.Format(config.TIME_FORMAT)
 
-	return &LinkDetails{
+	return LinkDetails{
 		ShortCode:   link.ShortCode,
 		OriginalURL: link.OriginalURL,
 		IsActive:    link.IsActive,
@@ -156,9 +174,9 @@ func ToLinkDetails(link *entity.Link) *LinkDetails {
 		UserID:      link.UserID,
 		MaxClicks:   link.MaxClicks,
 		Tags:        tags,
-		ExpiresAt:   &expiresAt,
-		CreatedAt:   &createdAt,
-		UpdatedAt:   &updatedAt,
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
+		ExpiresAt:   expiresAt,
 		DeletedAt:   &deletedAt,
 	}
 }
