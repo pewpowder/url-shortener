@@ -6,8 +6,6 @@ import (
 
 type Tag struct {
 	gorm.Model
-	Name  string `gorm:"primaryKey"`
-	Color string `gorm:"size:7;default:'#4f46e5'"`
+	Name  string `gorm:"size:50;index;unique"`
+	Color string `gorm:"size:7;"`
 }
-
-// TODO: Add additional endpoint for managing tags (when craete link we just pass tag name and check if it exists)

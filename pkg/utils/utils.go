@@ -30,7 +30,16 @@ func ParseOptionalTime(value *string) (*time.Time, error) {
 	return &utcTime, nil
 }
 
-// Gin default doesn't split comma-separated strings into slcies (param=str1,str2,str3... will not be splitted into slice)
+func ParseTime(value *string) (time.Time, error) {
+	parsedTime, err := time.Parse(config.TIME_FORMAT, *value)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid time format: %w", err)
+	}
+
+	return parsedTime, nil
+}
+
+// Gin default doesn't split comma-separated strings into slices (param=str1,str2,str3... will not be split into slices)
 func GinSplitString(data []string) []string {
 	if len(data) == 1 {
 		return strings.Split(data[0], ",")

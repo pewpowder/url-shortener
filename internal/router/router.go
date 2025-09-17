@@ -27,9 +27,9 @@ func setLinkController(router *gin.Engine, container container.Container, authMi
 
 	router.GET("/links", authMiddleware, linkController.GetLinks)
 	router.GET("/links/:id", authMiddleware, linkController.GetLinkDetails)
-
 	router.POST("/links", authMiddleware, linkController.CreateLink)
-	router.PUT("/links", authMiddleware, linkController.UpdateLink)
+	router.PUT("/links/:id", authMiddleware, linkController.UpdateLink) // TODO: extract id from params not body
+	// router.PATCH("/links/:id", authMiddleware, linkController.PatchLink) // TODO: add patch link
 	router.DELETE("/links/:id", authMiddleware, linkController.DeleteLink)
 }
 
@@ -38,8 +38,8 @@ func setTagController(router *gin.Engine, container container.Container, authMid
 
 	router.GET("/tags", authMiddleware, tagController.GetTags)
 	router.GET("/tags/:id", authMiddleware, tagController.GetTagByID)
-
 	router.POST("/tags", authMiddleware, tagController.CreateTag)
-	router.PUT("/tags", authMiddleware, tagController.UpdateTag)
+	router.PUT("/tags/:id", authMiddleware, tagController.UpdateTag)
+	router.PATCH("/tags/:id", authMiddleware, tagController.PatchTag)
 	router.DELETE("/tags/:id", authMiddleware, tagController.DeleteTag)
 }

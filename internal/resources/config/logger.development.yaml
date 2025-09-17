@@ -20,4 +20,4 @@ gorm:
   colorful: false
   ignore_record_not_found_error: false
   parameterized_queries: false
-  log_evel: 4          
+  log_level: 4          

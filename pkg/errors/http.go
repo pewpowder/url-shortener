@@ -8,15 +8,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// TODO: enhance errors add: 1. error code 2. error title 3. error details
 func HandleError(c *gin.Context, err error) {
 	var se *ServiceError
 	if errors.As(err, &se) {
-		c.JSON(ErrorTypeToHTTPStatus(se.Type), gin.H{"error": se.Message})
+		c.JSON(ErrorTypeToHTTPStatus(se.Type), gin.H{"code": ErrorTypeToHTTPStatus(se.Type), "error": se.Message})
 		return
 	}
 
-	// response with default error message because message in err can contain secret information
-	c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+	// response with default error message because message in err can contain confidential information
+	c.JSON(http.StatusInternalServerError, gin.H{"code": http.StatusInternalServerError, "error": "internal server error"})
 }
 
 func ErrorTypeToHTTPStatus(errorType ErrorType) int {

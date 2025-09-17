@@ -21,17 +21,19 @@
 go.work
 go.work.sum
 
-# enviroments
+# environments
 .env
+
+# IDEs
+.cursor
 .vscode
 
-# docker containers volumes
+# docker
 volumes/
+docker-compose.yml
 
 # other
 logs
 can-be-better.txt
 tmp
-logs
-.cursor
-.vscode
+db.session.sql

@@ -1,25 +1,27 @@
 package errors
 
-import "gorm.io/gorm"
+import (
+	"errors"
 
-func GormErrorToErrorType(gormErr error) ErrorType {
-	if gormErr == nil {
-		return ErrTypeInternal
-	}
+	"gorm.io/gorm"
+)
 
-	switch gormErr {
-	case gorm.ErrRecordNotFound:
+func GormErrorToErrorType(err error) ErrorType {
+	switch {
+	case errors.Is(err, gorm.ErrRecordNotFound):
 		return ErrTypeNotFound
-	case gorm.ErrDuplicatedKey:
+	case errors.Is(err, gorm.ErrDuplicatedKey):
 		return ErrTypeConflict
-	case gorm.ErrForeignKeyViolated,
-		gorm.ErrCheckConstraintViolated:
+	case errors.Is(err, gorm.ErrForeignKeyViolated) || errors.Is(err, gorm.ErrCheckConstraintViolated):
 		return ErrTypeValidation
-	case
-		gorm.ErrPrimaryKeyRequired, gorm.ErrModelValueRequired,
-		gorm.ErrModelAccessibleFieldsRequired, gorm.ErrSubQueryRequired,
-		gorm.ErrInvalidData, gorm.ErrInvalidField, gorm.ErrInvalidValue,
-		gorm.ErrInvalidValueOfLength:
+	case errors.Is(err, gorm.ErrPrimaryKeyRequired) ||
+		errors.Is(err, gorm.ErrModelValueRequired) ||
+		errors.Is(err, gorm.ErrModelAccessibleFieldsRequired) ||
+		errors.Is(err, gorm.ErrSubQueryRequired) ||
+		errors.Is(err, gorm.ErrInvalidData) ||
+		errors.Is(err, gorm.ErrInvalidField) ||
+		errors.Is(err, gorm.ErrInvalidValue) ||
+		errors.Is(err, gorm.ErrInvalidValueOfLength):
 		return ErrTypeValidation
 	default:
 		return ErrTypeInternal

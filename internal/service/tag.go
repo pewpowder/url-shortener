@@ -5,11 +5,17 @@ import (
 	"github.com/pewpowder/url-shortener/internal/dto"
 	"github.com/pewpowder/url-shortener/internal/entity"
 	"github.com/pewpowder/url-shortener/internal/repository"
+	"gorm.io/gorm"
 )
 
+const DEFAULT_COLOR = "#4f46e5"
+
 type TagService interface {
-	CreateTag(createTag dto.TagRequest) (entity.Tag, error)
-	GetTags() ([]entity.Tag, error)
+	CreateTag(createTag dto.CreateOrUpdateTag) (entity.Tag, error)
+	UpdateTag(id uint, updateTag dto.CreateOrUpdateTag) (entity.Tag, error)
+	PatchTag(id uint, patchTag dto.PatchTag) (entity.Tag, error)
+	DeleteTag(id uint) (entity.Tag, error)
+	GetTags(q dto.TagListQuery) ([]entity.Tag, error)
 	GetTagByID(id uint) (entity.Tag, error)
 }
 
@@ -25,14 +31,55 @@ func NewTagService(container container.Container) TagService {
 	}
 }
 
-func (ts *tagService) CreateTag(tagDto dto.TagRequest) (entity.Tag, error) {
-	return ts.repo.CreateTag(tagDto)
+func (ts *tagService) CreateTag(tagDto dto.CreateOrUpdateTag) (entity.Tag, error) {
+	tag := entity.Tag{
+		Name:  tagDto.Name,
+		Color: SetDefaultColorIfEmpty(tagDto.Color),
+	}
+
+	return ts.repo.CreateTag(tag)
 }
 
-func (ts *tagService) GetTags() ([]entity.Tag, error) {
-	return ts.repo.GetTags()
+func (ts *tagService) UpdateTag(id uint, tagDto dto.CreateOrUpdateTag) (entity.Tag, error) {
+	tag := entity.Tag{
+		Model: gorm.Model{ID: id},
+		Name:  tagDto.Name,
+		Color: SetDefaultColorIfEmpty(tagDto.Color),
+	}
+
+	return ts.repo.UpdateTag(id, tag)
+}
+
+func (ts *tagService) PatchTag(id uint, patchTag dto.PatchTag) (entity.Tag, error) {
+	tag := entity.Tag{}
+
+	if patchTag.Color != nil {
+		tag.Color = SetDefaultColorIfEmpty(*patchTag.Color)
+	}
+
+	if patchTag.Name != nil {
+		tag.Name = *patchTag.Name
+	}
+
+	return ts.repo.PatchTag(id, tag)
+}
+
+func (ts *tagService) DeleteTag(id uint) (entity.Tag, error) {
+	return ts.repo.DeleteTag(id)
+}
+
+func (ts *tagService) GetTags(q dto.TagListQuery) ([]entity.Tag, error) {
+	return ts.repo.GetTags(q)
 }
 
 func (ts *tagService) GetTagByID(id uint) (entity.Tag, error) {
 	return ts.repo.GetTagByID(id)
+}
+
+func SetDefaultColorIfEmpty(color string) string {
+	if color == "" {
+		return DEFAULT_COLOR
+	}
+
+	return color
 }

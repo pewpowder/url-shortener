@@ -6,9 +6,25 @@ import (
 	"github.com/pewpowder/url-shortener/internal/entity"
 )
 
-type TagRequest struct {
+type TagFilter struct {
+	Name  *string `form:"filter[name]"`
+	Color *string `form:"filter[color]"`
+}
+
+type TagListQuery struct {
+	Pagination Pagination
+	Sort       Sort
+	Filter     *TagFilter
+}
+
+type CreateOrUpdateTag struct {
 	Name  string `json:"name" binding:"required,alphanum,max=50"`
-	Color string `json:"color" binding:"required,hexcolor"`
+	Color string `json:"color" binding:"omitempty,hexcolor"`
+}
+
+type PatchTag struct {
+	Name  *string `json:"name" binding:"omitempty,alphanum,max=50"`
+	Color *string `json:"color" binding:"omitempty,hexcolor"`
 }
 
 type TagResponse struct {
@@ -23,13 +39,6 @@ type TagEmbedding struct {
 	ID    uint   `json:"id" validate:"required"`
 	Name  string `json:"name" validate:"required,alphanum,max=50"`
 	Color string `json:"color" validate:"required,hexcolor"`
-}
-
-func FromTagRequest(tag TagRequest) entity.Tag {
-	return entity.Tag{
-		Name:  tag.Name,
-		Color: tag.Color,
-	}
 }
 
 func ToTagResponse(tag entity.Tag) TagResponse {

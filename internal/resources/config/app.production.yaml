@@ -1,5 +1,5 @@
 server:
-  port: ""
+  port: 0
   host: ""
   timeout: 4s
   idle_timeout: 60s
@@ -7,4 +7,5 @@ server:
   auth_service_url: "http://auth-service:8080"
 db:
   DSN: "host= port= user= password= dbname= sslmode=disable"
-# Для production credentials используйте переменные окружения или секреты Kubernetes/CI/CD. Можно добавить поддержку подстановки из env через ${VAR}.
+  
+# For production credentials use environment variables of secrets in Kubernetes/CI/CD. You can add env support via ${VAR}.
