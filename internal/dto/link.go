@@ -1,7 +1,6 @@
 package dto
 
 import (
-	"errors"
 	"time"
 
 	"github.com/pewpowder/url-shortener/internal/config"
@@ -11,22 +10,22 @@ import (
 
 type CreateLink struct {
 	URL       string   `json:"url" binding:"required,url"`
-	IsPrivate bool     `json:"is_private" binding:"default=false"`
-	IsActive  bool     `json:"is_active" binding:"default=true"`
-	Password  string   `json:"password" binding:"required_if=is_private true min=6,containsany=!@#$%^&*"`
-	MaxClicks int      `json:"max_clicks" binding:"gte=0,default=0"` // 0 means no limit
+	IsPrivate *bool    `json:"is_private"`
+	IsActive  *bool    `json:"is_active"`
+	Password  string   `json:"password" binding:"omitempty,required_if=IsPrivate true,min=6,containsany=!@#$%^&*"`
+	MaxClicks int      `json:"max_clicks" binding:"gte=0,lte=100000"` // 0 means no limit
 	Tags      []string `json:"tags" binding:"max=10"`
-	ExpiresAt *string  `json:"expires_at" binding:"datetime=2006-01-02T15:04:05Z07:00"`
+	ExpiresAt *string  `json:"expires_at" binding:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
 }
 
-type UpdateLink struct {
-	URL       *string   `json:"url" binding:"url"`
-	IsPrivate *bool     `json:"is_private"`
-	IsActive  *bool     `json:"is_active"`
-	Password  *string   `json:"password" binding:"required_if=is_private true min=6,containsany=!@#$%^&*"`
-	MaxClicks *int      `json:"max_clicks" binding:"gte=0"`
-	Tags      *[]string `json:"tags" binding:"max=10"`
-	ExpiresAt *string   `json:"expires_at" binding:"datetime=2006-01-02T15:04:05Z07:00"`
+type PatchLink struct {
+	URL       *string  `json:"url" binding:"omitempty,url"`
+	IsPrivate *bool    `json:"is_private"`
+	IsActive  *bool    `json:"is_active"`
+	Password  *string  `json:"password" binding:"omitempty,required_if=IsPrivate true,min=6,containsany=!@#$%^&*"`
+	MaxClicks *int     `json:"max_clicks" binding:"omitempty,gte=0,lte=100000"`
+	Tags      []string `json:"tags" binding:"omitempty,max=10"`
+	ExpiresAt *string  `json:"expires_at" binding:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
 }
 
 type LinkListQuery struct {
@@ -54,7 +53,6 @@ type LinkDetails struct {
 	OriginalURL string         `json:"original_url" validate:"required"`
 	IsActive    bool           `json:"is_active" validate:"required"`
 	IsPrivate   bool           `json:"is_private" validate:"required"`
-	UserID      uint           `json:"user_id"` // validate:"required"
 	MaxClicks   int            `json:"max_clicks" validate:"required"`
 	Tags        []TagEmbedding `json:"tags"`
 	CreatedAt   string         `json:"created_at" validate:"required"`
@@ -63,17 +61,12 @@ type LinkDetails struct {
 	DeletedAt   *string        `json:"deleted_at"`
 }
 
-func FromCreateLink(createLink CreateLink, passHash *string, tags []entity.Tag) (entity.Link, error) {
-	expiresAt, _ := utils.ParseOptionalTime(createLink.ExpiresAt)
-
-	if expiresAt != nil && expiresAt.Before(time.Now()) {
-		return entity.Link{}, errors.New("expires_at must be non past value")
-	}
-
+func FromCreateLink(createLink CreateLink, shortCode string, passHash *string, tags []entity.Tag, expiresAt *time.Time) (entity.Link, error) {
 	return entity.Link{
+		ShortCode:    shortCode,
 		OriginalURL:  createLink.URL,
-		IsPrivate:    createLink.IsPrivate,
-		IsActive:     createLink.IsActive,
+		IsPrivate:    utils.DerefBool(createLink.IsPrivate, false),
+		IsActive:     createLink.IsActive != nil && *createLink.IsActive,
 		PasswordHash: passHash,
 		MaxClicks:    createLink.MaxClicks,
 		Tags:         tags,
@@ -81,7 +74,12 @@ func FromCreateLink(createLink CreateLink, passHash *string, tags []entity.Tag) 
 	}, nil
 }
 
-func FromUpdateLink(updateLink UpdateLink, passHash *string, tags []entity.Tag) (entity.Link, error) {
+// 1. I should get link from db
+// 2. I should update link with new data
+// 3. I should update link in db
+// 4. I should return link
+// 5. Is this a good approach?
+func FromUpdateLink(updateLink PatchLink, passHash *string, tags []entity.Tag, expiresAt *time.Time) (entity.Link, error) {
 	link := entity.Link{}
 
 	if updateLink.URL != nil {
@@ -104,13 +102,8 @@ func FromUpdateLink(updateLink UpdateLink, passHash *string, tags []entity.Tag) 
 		link.Tags = tags
 	}
 
-	if updateLink.ExpiresAt != nil {
-		parsedTime, _ := utils.ParseOptionalTime(updateLink.ExpiresAt)
-		if parsedTime != nil && parsedTime.Before(time.Now()) {
-			return entity.Link{}, errors.New("expires_at must be non past value")
-		}
-
-		link.ExpiresAt = parsedTime
+	if expiresAt != nil {
+		link.ExpiresAt = expiresAt
 	}
 
 	link.PasswordHash = passHash
@@ -122,22 +115,27 @@ func ToLinkList(links []entity.Link) []LinkList {
 	var linkList []LinkList
 
 	for _, link := range links {
-		tags := make([]TagEmbedding, len(link.Tags))
+		tags := make([]TagEmbedding, 0, len(link.Tags))
 
 		for _, tag := range link.Tags {
 			tags = append(tags, ToTagEmbedding(tag))
 		}
 
-		expiresAt := link.ExpiresAt.Format(config.TIME_FORMAT)
-		createdAt := link.CreatedAt.Format(config.TIME_FORMAT)
+		var expiresAt *string
+		if link.ExpiresAt != nil {
+			v := link.ExpiresAt.Format(config.TIME_FORMAT)
+			expiresAt = &v
+		}
 
 		item := LinkList{
+			ID:          link.ID,
 			ShortCode:   link.ShortCode,
 			OriginalURL: link.OriginalURL,
 			IsActive:    link.IsActive,
-			CreatedAt:   createdAt,
 			Tags:        tags,
-			ExpiresAt:   &expiresAt,
+			CreatedAt:   link.CreatedAt.Format(config.TIME_FORMAT),
+			UpdatedAt:   link.UpdatedAt.Format(config.TIME_FORMAT),
+			ExpiresAt:   expiresAt,
 		}
 
 		linkList = append(linkList, item)
@@ -147,7 +145,7 @@ func ToLinkList(links []entity.Link) []LinkList {
 }
 
 func ToLinkDetails(link entity.Link) LinkDetails {
-	tags := make([]TagEmbedding, len(link.Tags))
+	tags := make([]TagEmbedding, 0, len(link.Tags))
 	for _, tag := range link.Tags {
 		tags = append(tags, ToTagEmbedding(tag))
 	}
@@ -163,19 +161,15 @@ func ToLinkDetails(link entity.Link) LinkDetails {
 		expiresAt = &formatted
 	}
 
-	createdAt := link.CreatedAt.Format(config.TIME_FORMAT)
-	updatedAt := link.UpdatedAt.Format(config.TIME_FORMAT)
-
 	return LinkDetails{
 		ShortCode:   link.ShortCode,
 		OriginalURL: link.OriginalURL,
 		IsActive:    link.IsActive,
 		IsPrivate:   link.IsPrivate,
-		UserID:      link.UserID,
 		MaxClicks:   link.MaxClicks,
 		Tags:        tags,
-		CreatedAt:   createdAt,
-		UpdatedAt:   updatedAt,
+		CreatedAt:   link.CreatedAt.Format(config.TIME_FORMAT),
+		UpdatedAt:   link.UpdatedAt.Format(config.TIME_FORMAT),
 		ExpiresAt:   expiresAt,
 		DeletedAt:   &deletedAt,
 	}

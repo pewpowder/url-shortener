@@ -5,42 +5,54 @@ import (
 	"runtime"
 )
 
-type ErrorType uint
+type ErrorCode uint
 
 const (
-	// ErrorTypeUnknown - неизвестная ошибка (500)
-	ErrTypeInternal ErrorType = iota
-	// ErrorTypeValidation - ошибка валидации (400)
-	ErrTypeValidation
-	// ErrorTypeNotFound - ресурс не найден (404)
-	ErrTypeNotFound
-	// ErrorTypeConflict - конфликт ресурсов (409)
-	ErrTypeConflict
-	// ErrorTypeUnauthorized - не авторизован (401)
-	ErrTypeUnauthorized
-	// ErrorTypeForbidden - доступ запрещен (403)
-	ErrTypeForbidden
-	// ErrorTypeExpired - ресурс истек (410)
-	ErrTypeExpired
+	// ErrorTypeUnknown - unknown error (500)
+	ErrCodeInternal ErrorCode = iota
+	// ErrCodeBadRequest - request is invalid (400)
+	ErrCodeBadRequest
+	// ErrorTypeNotFound - resource not found (404)
+	ErrCodeNotFound
+	// ErrorTypeConflict - resource already exists 	(409)
+	ErrCodeConflict
+	// ErrCodeUnauthorized - unauthorized (401)
+	ErrCodeUnauthorized
+	// ErrCodeForbidden - forbidden (403)
+	ErrCodeForbidden
+	// ErrorTypeExpired - expired (410)
+	ErrCodeExpired
+)
+
+const (
+	ErrInternal       = "INTERNAL_ERROR"
+	ErrInvalidRequest = "INVALID_REQUEST"
+	ErrUnauthorized   = "UNAUTHORIZED"
+	ErrForbidden      = "FORBIDDEN"
+	ErrGone           = "GONE"
+	ErrNotFound       = "NOT_FOUND"
+	ErrConflict       = "CONFLICT"
 )
 
 type ServiceError struct {
-	Message string
-	Type    ErrorType
-	File    string
-	Line    int
-	Err     error
+	Message  string
+	Code     ErrorCode
+	CodeText string
+	Err      error
+	File     string
+	Line     int
 }
 
-func NewServiceError(message string, errorType ErrorType, err error) error {
+func NewServiceError(message string, code ErrorCode, codeText string, err error) error {
 	_, file, line, _ := runtime.Caller(1)
 
 	return &ServiceError{
-		Message: message,
-		Type:    errorType,
-		Err:     err,
-		File:    file,
-		Line:    line,
+		Message:  message,
+		Code:     code,
+		CodeText: codeText,
+		Err:      err,
+		File:     file,
+		Line:     line,
 	}
 }
 
@@ -61,58 +73,21 @@ func IsAnyOf(err error, errors ...error) bool {
 	return false
 }
 
-// GormExample
-// return nil, &ServiceError{
-// 	Message: "some message",
-// 	Type: getTypeByGormError(err), // map gorm error to my ErrorType
-// 	InitialError: err,
-// 	File: "file.go",
-// 	Line: 10,
-// }
-
-// General error
-// return nil, &ServiceError{
-// 	Message: "some message",
-// 	Type: InternalServerError // I exactly know what error occurred
-// 	InitialError: err,
-// 	File: "file.go",
-// 	Line: 10,
-// }
-
-// Custom errors flow
-// 1. Ошибка происходит на любом из уровней, я создаю новую структуру ServiceError
-// и наполняю ее данными в месте создания (тк в этом месте есть все необходимые данные для идентификации ошибки)
-// 2. Возвращаю ошибку выше по уровню (через error в объявлении функций)
-// 3. На каждом из уровней могу дополнительно лишь обогащать ошибку через fmt.Errorf("%w: add info")
-// 4. В контроллере вызываю HandleError метод (ошибка передается не связанная с протоколом HTTP, GRPC и тд)
-// 5. В методе проверяю ошибку, что это моя кастомная ошибка и достаю всю необходимую инфу оттуда
-// 6. Статус код мапится по Type в теле ошибки
-// 7. Отправляется ответ клиенту
-
-// func NewServiceError(errType ErrorType, message string, initialErr error) *ServiceError {
-//     _, file, line, _ := runtime.Caller(1)
-//     return &ServiceError{
-//         Message:      message,
-//         Type:         errType,
-//         InitialError: initialErr,
-//         File:         file,
-//         Line:         line,
-//     }
-// }
-
-// type AppError interface {
-//     error
-//     ErrorType() ErrorType
-//     Unwrap() error
-//     File() string
-//     Line() int
-//     Code() string
-// }
-
-// Sentinel errors flow
-// 1. Ошибка происходит на любом из уровней, я просто возвращаю одну из предсозданных ошибок
-// 2. Если ошибка пришла из вне (к примеру, gorm) мне нужно мапить уже на этом уровне ошибку gorm
-// к объявленным внутри приложения ошибкам
-// 3. Так же на каждом уровне могу дополнительно обогащать ошибку через fmt.Errorf("%w: add info")
-// 4. остальное все так же как и в кастомных ошибках за исключением, что статус я достаю не из тела
-// а маплю сервисную ошибку на нужный статус код руками
+func GetCodeTextByCode(code ErrorCode) string {
+	switch code {
+	case ErrCodeBadRequest:
+		return ErrInvalidRequest
+	case ErrCodeNotFound:
+		return ErrNotFound
+	case ErrCodeConflict:
+		return ErrConflict
+	case ErrCodeUnauthorized:
+		return ErrUnauthorized
+	case ErrCodeForbidden:
+		return ErrForbidden
+	case ErrCodeExpired:
+		return ErrGone
+	default:
+		return ErrInternal
+	}
+}

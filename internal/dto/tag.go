@@ -7,13 +7,14 @@ import (
 )
 
 type TagFilter struct {
-	Name  *string `form:"filter[name]"`
-	Color *string `form:"filter[color]"`
+	Name  *string  `form:"filter[name]"`
+	Names []string `form:"filter[names]"`
+	Color *string  `form:"filter[color]"`
 }
 
 type TagListQuery struct {
 	Pagination Pagination
-	Sort       Sort
+	Sort       Sort // TODO: make optional
 	Filter     *TagFilter
 }
 

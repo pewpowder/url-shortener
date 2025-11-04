@@ -6,51 +6,79 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pewpowder/url-shortener/pkg/logger"
 )
 
-// TODO: enhance errors add: 1. error code 2. error title 3. error details
 func HandleError(c *gin.Context, err error) {
+	logger.Get().Err(err)
+
 	var se *ServiceError
 	if errors.As(err, &se) {
-		c.JSON(ErrorTypeToHTTPStatus(se.Type), gin.H{"code": ErrorTypeToHTTPStatus(se.Type), "error": se.Message})
+		c.JSON(ErrorCodeToHTTPStatus(se.Code), gin.H{
+			"code":    ErrorCodeToHTTPStatus(se.Code),
+			"error":   se.CodeText,
+			"details": se.Message,
+		})
 		return
 	}
 
-	// response with default error message because message in err can contain confidential information
-	c.JSON(http.StatusInternalServerError, gin.H{"code": http.StatusInternalServerError, "error": "internal server error"})
+	c.JSON(http.StatusInternalServerError, gin.H{
+		"code":    http.StatusInternalServerError,
+		"error":   "Internal Server Error",
+		"details": "Internal Server Error",
+	})
 }
 
-func ErrorTypeToHTTPStatus(errorType ErrorType) int {
+func InvalidQueryParams(c *gin.Context, err error) {
+	HandleError(c, NewServiceError(fmt.Sprintf("invalid query params: %s", err), ErrCodeBadRequest, ErrInvalidRequest, err))
+}
+
+func InvalidRequestData(c *gin.Context, err error) {
+	HandleError(c, NewServiceError(fmt.Sprintf("invalid request data: %s", err), ErrCodeBadRequest, ErrInvalidRequest, err))
+}
+
+func UnauthorizedError(c *gin.Context, err error) {
+	HandleError(c, NewServiceError(fmt.Sprintf("unauthorized: %s", err), ErrCodeUnauthorized, ErrUnauthorized, err))
+}
+
+func InternalServerError(c *gin.Context, err error) {
+	HandleError(c, NewServiceError(fmt.Sprintf("internal server error: %s", err), ErrCodeInternal, ErrInternal, err))
+}
+
+func ErrorCodeToHTTPStatus(errorType ErrorCode) int {
 	switch errorType {
-	case ErrTypeValidation:
+	case ErrCodeBadRequest:
 		return http.StatusBadRequest
-	case ErrTypeNotFound:
+	case ErrCodeNotFound:
 		return http.StatusNotFound
-	case ErrTypeConflict:
+	case ErrCodeConflict:
 		return http.StatusConflict
-	case ErrTypeUnauthorized:
+	case ErrCodeUnauthorized:
 		return http.StatusUnauthorized
-	case ErrTypeForbidden:
+	case ErrCodeForbidden:
 		return http.StatusForbidden
-	case ErrTypeExpired:
+	case ErrCodeExpired:
 		return http.StatusGone
 	default:
 		return http.StatusInternalServerError
 	}
 }
 
-func InvalidQueryParams(c *gin.Context, err error) {
-	HandleError(c, NewServiceError(fmt.Sprintf("invalid query params: %s", err), ErrTypeValidation, err))
-}
-
-func InvalidRequestData(c *gin.Context, err error) {
-	HandleError(c, NewServiceError(fmt.Sprintf("invalid request data: %s", err), ErrTypeValidation, err))
-}
-
-func UnauthorizedError(c *gin.Context, err error) {
-	HandleError(c, NewServiceError(fmt.Sprintf("unauthorized: %s", err), ErrTypeUnauthorized, err))
-}
-
-func InternalServerError(c *gin.Context, err error) {
-	HandleError(c, NewServiceError(fmt.Sprintf("internal server error: %s", err), ErrTypeInternal, err))
+func GetErrorByErrorCode(code ErrorCode) string {
+	switch code {
+	case ErrCodeBadRequest:
+		return "Bad Request"
+	case ErrCodeNotFound:
+		return "Not Found"
+	case ErrCodeConflict:
+		return "Conflict"
+	case ErrCodeUnauthorized:
+		return "Unauthorized"
+	case ErrCodeForbidden:
+		return "Forbidden"
+	case ErrCodeExpired:
+		return "Gone"
+	default:
+		return "Internal Server Error"
+	}
 }

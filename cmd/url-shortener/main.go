@@ -51,7 +51,8 @@ func main() {
 
 func connectDatabase(DSN string, zl *zerolog.Logger, loggerCfg *logger.LoggerConfig) (*gorm.DB, error) {
 	gormCfg := &gorm.Config{
-		Logger: logger.NewGormLogger(zl, loggerCfg.ToGormConfig(&loggerCfg.Gorm)),
+		Logger:         logger.NewGormLogger(zl, loggerCfg.ToGormConfig(&loggerCfg.Gorm)),
+		TranslateError: true,
 	}
 
 	db, err := gorm.Open(postgres.New(postgres.Config{
@@ -64,3 +65,5 @@ func connectDatabase(DSN string, zl *zerolog.Logger, loggerCfg *logger.LoggerCon
 
 	return db, nil
 }
+
+// TODO: Set up nginx for application!!!!

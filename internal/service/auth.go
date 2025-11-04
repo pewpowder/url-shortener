@@ -35,7 +35,7 @@ func NewAuthService(authServiceURL string) AuthService {
 func (as *authService) GetUserIDByToken(ctx context.Context, token string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", as.authServiceURL, nil)
 	if err != nil {
-		return "", se.NewServiceError("failed to create request", se.ErrTypeInternal, err)
+		return "", se.NewServiceError("failed to create request", se.ErrCodeInternal, se.ErrInternal, err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -43,21 +43,21 @@ func (as *authService) GetUserIDByToken(ctx context.Context, token string) (stri
 
 	resp, err := as.httpClient.Do(req)
 	if err != nil {
-		return "", se.NewServiceError("failed to make request to auth service", se.ErrTypeInternal, err)
+		return "", se.NewServiceError("failed to make request to auth service", se.ErrCodeInternal, se.ErrInternal, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", se.NewServiceError(fmt.Sprintf("auth service returned status %d", resp.StatusCode), se.ErrTypeInternal, nil)
+		return "", se.NewServiceError(fmt.Sprintf("auth service returned status %d", resp.StatusCode), se.ErrCodeInternal, se.ErrInternal, nil)
 	}
 
 	var authResp AuthResponse
 	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
-		return "", se.NewServiceError("failed to decode auth response", se.ErrTypeInternal, err)
+		return "", se.NewServiceError("failed to decode auth response", se.ErrCodeInternal, se.ErrInternal, err)
 	}
 
 	if authResp.UserID == "" {
-		return "", se.NewServiceError("invalid token or user not found", se.ErrTypeUnauthorized, nil)
+		return "", se.NewServiceError("invalid token or user not found", se.ErrCodeUnauthorized, se.ErrUnauthorized, nil)
 	}
 
 	return authResp.UserID, nil

@@ -27,6 +27,7 @@ go.work.sum
 # IDEs
 .cursor
 .vscode
+launch.json
 
 # docker
 volumes/

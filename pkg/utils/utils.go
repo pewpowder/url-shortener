@@ -5,7 +5,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alexedwards/argon2id"
+	"github.com/jaevor/go-nanoid"
 	"github.com/pewpowder/url-shortener/internal/config"
+	"github.com/pewpowder/url-shortener/pkg/logger"
 )
 
 func DerefBool(b *bool, defaultVal bool) bool {
@@ -46,4 +49,39 @@ func GinSplitString(data []string) []string {
 	}
 
 	return data
+}
+
+func CreateHash(password string) (string, error) {
+	return argon2id.CreateHash(password, argon2id.DefaultParams)
+}
+
+func CompareHash(password, hash string) (bool, error) {
+	return argon2id.ComparePasswordAndHash(password, hash)
+}
+
+func GenerateNanoid() string {
+	nanoidGen, err := nanoid.Canonic()
+
+	if err != nil {
+		logger.Get().Fatal().Msg("Can't initiate nanoid generator")
+	}
+
+	return nanoidGen()
+}
+
+func Difference[T comparable](a, b []T) []T {
+	lookup := make(map[T]struct{}, len(b))
+	for _, val := range b {
+		lookup[val] = struct{}{}
+	}
+
+	// Collect elements from a not in b
+	var diff []T
+	for _, val := range a {
+		if _, found := lookup[val]; !found {
+			diff = append(diff, val)
+		}
+	}
+
+	return diff
 }
