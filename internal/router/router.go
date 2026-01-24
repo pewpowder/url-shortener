@@ -28,7 +28,7 @@ func setLinkController(router *gin.Engine, container container.Container, authMi
 	router.GET("/links", authMiddleware, linkController.GetLinks)
 	router.GET("/links/:id", authMiddleware, linkController.GetLinkDetails)
 	router.POST("/links", authMiddleware, linkController.CreateLink)
-	router.PUT("/links", authMiddleware, linkController.UpdateLink)
+	router.PUT("/links/:id", authMiddleware, linkController.UpdateLink)
 	router.DELETE("/links/:id", authMiddleware, linkController.DeleteLink)
 }
 

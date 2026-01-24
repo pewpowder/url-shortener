@@ -60,7 +60,7 @@ func (tr *tagRepository) PatchTag(id uint, tag entity.Tag) (entity.Tag, error) {
 	}
 
 	if tx.RowsAffected == 0 {
-		return entity.Tag{}, se.NewServiceErrorFromGorm(fmt.Sprintf("tag with id %d not found", id), tx.Error)
+		return entity.Tag{}, se.NewServiceErrorFromGorm(fmt.Sprintf("tag with id %d not found", id), gorm.ErrRecordNotFound)
 	}
 
 	return out, nil
@@ -75,7 +75,7 @@ func (tr *tagRepository) DeleteTag(id uint) (entity.Tag, error) {
 	}
 
 	if tx.RowsAffected == 0 {
-		return entity.Tag{}, se.NewServiceErrorFromGorm(fmt.Sprintf("tag with id %d not found", id), tx.Error)
+		return entity.Tag{}, se.NewServiceErrorFromGorm(fmt.Sprintf("tag with id %d not found", id), gorm.ErrRecordNotFound)
 	}
 
 	return out, nil

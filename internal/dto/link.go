@@ -150,9 +150,10 @@ func ToLinkDetails(link entity.Link) LinkDetails {
 		tags = append(tags, ToTagEmbedding(tag))
 	}
 
-	var deletedAt string
+	var deletedAt *string
 	if link.DeletedAt.Valid {
-		deletedAt = link.DeletedAt.Time.Format(config.TIME_FORMAT)
+		formatted := link.DeletedAt.Time.Format(config.TIME_FORMAT)
+		deletedAt = &formatted
 	}
 
 	var expiresAt *string
@@ -162,6 +163,7 @@ func ToLinkDetails(link entity.Link) LinkDetails {
 	}
 
 	return LinkDetails{
+		ID: link.ID,
 		ShortCode:   link.ShortCode,
 		OriginalURL: link.OriginalURL,
 		IsActive:    link.IsActive,
@@ -171,6 +173,6 @@ func ToLinkDetails(link entity.Link) LinkDetails {
 		CreatedAt:   link.CreatedAt.Format(config.TIME_FORMAT),
 		UpdatedAt:   link.UpdatedAt.Format(config.TIME_FORMAT),
 		ExpiresAt:   expiresAt,
-		DeletedAt:   &deletedAt,
+		DeletedAt:   deletedAt,
 	}
 }

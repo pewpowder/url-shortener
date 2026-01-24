@@ -105,7 +105,7 @@ func (ls *linkService) CreateLink(ctx context.Context, createLink dto.CreateLink
 	}
 
 	// Calculate hash only if link private and password provided
-	var passHash string
+	var passHash *string
 	if isPrivate && createLink.Password != "" {
 		h, err := utils.CreateHash(createLink.Password)
 		if err != nil {
@@ -117,7 +117,7 @@ func (ls *linkService) CreateLink(ctx context.Context, createLink dto.CreateLink
 			)
 		}
 
-		passHash = h
+		passHash = &h
 	}
 
 	linkTags := make([]entity.Tag, 0, len(createLink.Tags))
@@ -166,7 +166,7 @@ func (ls *linkService) CreateLink(ctx context.Context, createLink dto.CreateLink
 		OriginalURL:  createLink.URL,
 		IsPrivate:    isPrivate,
 		IsActive:     isActive,
-		PasswordHash: &passHash,
+		PasswordHash: passHash,
 		MaxClicks:    createLink.MaxClicks,
 		Tags:         linkTags,
 		ExpiresAt:    expiresAt,
