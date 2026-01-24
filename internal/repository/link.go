@@ -3,10 +3,10 @@ package repository
 import (
 	"fmt"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/pewpowder/url-shortener/internal/dto"
 	"github.com/pewpowder/url-shortener/internal/entity"
 	se "github.com/pewpowder/url-shortener/pkg/errors"
-	"gorm.io/gorm"
 )
 
 // TODO: change link accordingly to the tag (also remove verbose methods and pass entity.Link to repo instead of dto.Link)
@@ -20,10 +20,10 @@ type LinkRepository interface {
 }
 
 type linkRepository struct {
-	db *gorm.DB
+	db *sqlx.DB
 }
 
-func NewLinkRepository(db *gorm.DB) LinkRepository {
+func NewLinkRepository(db *sqlx.DB) LinkRepository {
 	return &linkRepository{
 		db: db,
 	}

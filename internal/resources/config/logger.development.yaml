@@ -15,9 +15,5 @@ lumberjack:
     max_backups: 3
     compress: false
     directory: logs
-gorm:
-  slow_threshold: 200ms
-  colorful: false
-  ignore_record_not_found_error: false
-  parameterized_queries: false
+pgx:
   log_level: 4          

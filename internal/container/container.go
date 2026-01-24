@@ -1,31 +1,31 @@
 package container
 
 import (
+	"github.com/jmoiron/sqlx"
 	"github.com/pewpowder/url-shortener/internal/config"
-	"gorm.io/gorm"
 )
 
 type Container interface {
-	GetDB() *gorm.DB
+	GetDB() *sqlx.DB
 	GetConfig() *config.Config
 	GetEnv() string
 }
 
 type container struct {
-	db     *gorm.DB
+	db     *sqlx.DB
 	config *config.Config
 	env    string
 }
 
-func NewContainer(repo *gorm.DB, config *config.Config, env string) Container {
+func NewContainer(db *sqlx.DB, config *config.Config, env string) Container {
 	return &container{
-		db:     repo,
+		db:     db,
 		config: config,
 		env:    env,
 	}
 }
 
-func (c *container) GetDB() *gorm.DB {
+func (c *container) GetDB() *sqlx.DB {
 	return c.db
 }
 

@@ -4,18 +4,16 @@ import (
 	"embed"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/pewpowder/url-shortener/internal/config"
 	"github.com/rs/zerolog"
 	"gopkg.in/yaml.v3"
-	gormLogger "gorm.io/gorm/logger"
 )
 
 type LoggerConfig struct {
 	Zerolog    ZerologConfig `yaml:"zerolog"`
 	Lumberjack Lumberjack    `yaml:"lumberjack"`
-	Gorm       GormConfig    `yaml:"gorm"`
+	Pgx PgxConfig `yaml:"pgx"`
 }
 
 type ZerologConfig struct {
@@ -40,14 +38,6 @@ type Lumberjack struct {
 	Directory  string `yaml:"directory"`
 }
 
-type GormConfig struct {
-	SlowThreshold             time.Duration       `yaml:"slow_threshold"`
-	Colorful                  bool                `yaml:"colorful"`
-	IgnoreRecordNotFoundError bool                `yaml:"ignore_record_not_found_error"`
-	ParameterizedQueries      bool                `yaml:"parameterized_queries"`
-	LogLevel                  gormLogger.LogLevel `yaml:"log_level"`
-}
-
 var (
 	once      sync.Once
 	zlog      *zerolog.Logger
@@ -58,14 +48,12 @@ func InitLogger(yamlFS embed.FS, env string) error {
 	var initError error
 	once.Do(func() {
 		cfg, err := getLoggerConfig(yamlFS, env)
-
 		if err != nil {
 			initError = err
 			return
 		}
 
 		zl, err := configureZerolog(cfg)
-
 		if err != nil {
 			initError = err
 			return
@@ -79,30 +67,17 @@ func InitLogger(yamlFS embed.FS, env string) error {
 
 func getLoggerConfig(yamlFS embed.FS, env string) (*LoggerConfig, error) {
 	file, err := yamlFS.ReadFile(fmt.Sprintf(config.ZEROLOG_CONFIG_PATH, env))
-
 	if err != nil {
 		return nil, fmt.Errorf("can't read logger config: %w", err)
 	}
 
 	var cfg LoggerConfig
-
 	err = yaml.Unmarshal(file, &cfg)
-
 	if err != nil {
 		return nil, fmt.Errorf("can't decode logger config: %w", err)
 	}
 
 	return &cfg, nil
-}
-
-func (l *LoggerConfig) ToGormConfig(gormCfg *GormConfig) *gormLogger.Config {
-	return &gormLogger.Config{
-		SlowThreshold:             gormCfg.SlowThreshold,
-		Colorful:                  gormCfg.Colorful,
-		IgnoreRecordNotFoundError: gormCfg.IgnoreRecordNotFoundError,
-		ParameterizedQueries:      gormCfg.ParameterizedQueries,
-		LogLevel:                  gormCfg.LogLevel,
-	}
 }
 
 func setLogger(zerolog *zerolog.Logger) {

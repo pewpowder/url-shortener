@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/pewpowder/url-shortener/internal/dto"
 	"github.com/pewpowder/url-shortener/internal/entity"
 	se "github.com/pewpowder/url-shortener/pkg/errors"
@@ -20,10 +21,10 @@ type TagRepository interface {
 }
 
 type tagRepository struct {
-	db *gorm.DB
+	db *sqlx.DB
 }
 
-func NewTagRepository(db *gorm.DB) TagRepository {
+func NewTagRepository(db *sqlx.DB) TagRepository {
 	return &tagRepository{
 		db: db,
 	}

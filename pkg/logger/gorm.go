@@ -17,6 +17,14 @@ const (
 	traceInfoMsg = "%s\n[%.3fms] [rows:%v] %s"
 )
 
+type GormConfig struct {
+	SlowThreshold             time.Duration       `yaml:"slow_threshold"`
+	Colorful                  bool                `yaml:"colorful"`
+	IgnoreRecordNotFoundError bool                `yaml:"ignore_record_not_found_error"`
+	ParameterizedQueries      bool                `yaml:"parameterized_queries"`
+	LogLevel                  gormLogger.LogLevel `yaml:"log_level"`
+}
+
 type GormLogger struct {
 	zerolog *zerolog.Logger
 	config  *gormLogger.Config

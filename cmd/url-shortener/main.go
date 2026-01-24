@@ -2,68 +2,84 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os/signal"
 	"syscall"
+	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/exaring/otelpgx"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 	"github.com/pewpowder/url-shortener/internal/config"
 	"github.com/pewpowder/url-shortener/internal/container"
 	"github.com/pewpowder/url-shortener/internal/resources"
-	"github.com/pewpowder/url-shortener/internal/router"
 	"github.com/pewpowder/url-shortener/pkg/logger"
 	"github.com/rs/zerolog"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
+// TODO: remove gorm and gin. Use instead sqlx and http packages
+
 func main() {
-	c, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	cfg, env := config.MustLoad(resources.AppConfigFS)
 
 	err := logger.InitLogger(resources.ZerologConfigFS, env)
-
 	if err != nil {
 		log.Fatalf("can't init logger: %s", err)
 	}
 
-	db, err := connectDatabase(cfg.DB.DSN, logger.Get(), logger.GetConfig())
-
+	db, err := connectDatabase(ctx, cfg.DB.DSN, logger.Get(), logger.GetConfig())
 	if err != nil {
 		logger.Get().Fatal().Err(err).Msg("failed to connect to database")
 	}
+	defer db.Close()
 
 	container := container.NewContainer(db, cfg, env)
+	_ = container
 
-	gin.DebugPrintRouteFunc = logger.GinDebugPrintRoute
-	gin.DebugPrintFunc = logger.GinDebugPrint
-	g := gin.Default()
+	// // gin.DebugPrintRouteFunc = logger.GinDebugPrintRoute
+	// // gin.DebugPrintFunc = logger.GinDebugPrint
+	// // g := gin.Default()
 
-	router.Init(g, container)
+	// router.Init(g, container)
 
-	go g.Run(fmt.Sprintf(":%d", cfg.Server.Port))
+	// go g.Run(fmt.Sprintf(":%d", cfg.Server.Port))
 
-	<-c.Done()
+	<-ctx.Done()
+	
+	// TODO: graceful shutdown
 }
 
-func connectDatabase(DSN string, zl *zerolog.Logger, loggerCfg *logger.LoggerConfig) (*gorm.DB, error) {
-	gormCfg := &gorm.Config{
-		Logger:         logger.NewGormLogger(zl, loggerCfg.ToGormConfig(&loggerCfg.Gorm)),
-		TranslateError: true,
-	}
-
-	db, err := gorm.Open(postgres.New(postgres.Config{
-		DSN: DSN,
-	}), gormCfg) // TODO: Compare with default gorm logger in the future
-
+func connectDatabase(ctx context.Context, DSN string, zl *zerolog.Logger, loggerConfig *logger.LoggerConfig) (*sqlx.DB, error) {
+	c, cancel := context.WithTimeout(ctx, time.Second * 10)
+	defer cancel();
+	
+	cfg, err := pgx.ParseConfig(DSN)
 	if err != nil {
+		return nil, err
+	}
+	
+	traceLogger := logger.NewTraceLogger(*zl, loggerConfig.Pgx.LogLevel)
+	m := logger.MultiQueryTracer{
+		Tracers: []pgx.QueryTracer{
+			otelpgx.NewTracer(),
+			traceLogger,
+		},
+	}
+	
+	cfg.Tracer = &m;
+	
+	sqlDB := stdlib.OpenDB(*cfg)
+	db := sqlx.NewDb(sqlDB, "pgx")
+	
+	if err := db.PingContext(c); err != nil {
 		return nil, err
 	}
 
 	return db, nil
 }
 
-// TODO: Set up nginx for application!!!!
+// TODO: Set up nginx for application
