@@ -37,31 +37,31 @@ type LinkListQuery struct {
 
 // DTO for response validates only in development mode
 type LinkList struct {
-	ID          uint           `json:"id" validate:"required"`
-	ShortCode   string         `json:"short_code" validate:"required"`
-	OriginalURL string         `json:"original_url" validate:"required"`
-	IsActive    bool           `json:"is_active" validate:"required"`
-	Tags        []TagEmbedding `json:"tags"`
-	CreatedAt   string         `json:"created_at" validate:"required"`
-	UpdatedAt   string         `json:"updated_at" validate:"required"`
-	ExpiresAt   *string        `json:"expires_at"`
+	ID          uint     `json:"id" validate:"required"`
+	ShortCode   string   `json:"short_code" validate:"required"`
+	OriginalURL string   `json:"original_url" validate:"required"`
+	IsActive    bool     `json:"is_active" validate:"required"`
+	Tags        []string `json:"tags"`
+	CreatedAt   string   `json:"created_at" validate:"required"`
+	UpdatedAt   string   `json:"updated_at" validate:"required"`
+	ExpiresAt   *string  `json:"expires_at"`
 }
 
 type LinkDetails struct {
-	ID          uint           `json:"id" validate:"required"`
-	ShortCode   string         `json:"short_code" validate:"required"`
-	OriginalURL string         `json:"original_url" validate:"required"`
-	IsActive    bool           `json:"is_active" validate:"required"`
-	IsPrivate   bool           `json:"is_private" validate:"required"`
-	MaxClicks   int            `json:"max_clicks" validate:"required"`
-	Tags        []TagEmbedding `json:"tags"`
-	CreatedAt   string         `json:"created_at" validate:"required"`
-	UpdatedAt   string         `json:"updated_at" validate:"required"`
-	ExpiresAt   *string        `json:"expires_at"`
-	DeletedAt   *string        `json:"deleted_at"`
+	ID          uint     `json:"id" validate:"required"`
+	ShortCode   string   `json:"short_code" validate:"required"`
+	OriginalURL string   `json:"original_url" validate:"required"`
+	IsActive    bool     `json:"is_active" validate:"required"`
+	IsPrivate   bool     `json:"is_private" validate:"required"`
+	MaxClicks   int      `json:"max_clicks" validate:"required"`
+	Tags        []string `json:"tags"`
+	CreatedAt   string   `json:"created_at" validate:"required"`
+	UpdatedAt   *string  `json:"updated_at" validate:"required"`
+	ExpiresAt   *string  `json:"expires_at"`
+	DeletedAt   *string  `json:"deleted_at"`
 }
 
-func FromCreateLink(createLink CreateLink, shortCode string, passHash *string, tags []entity.Tag, expiresAt *time.Time) (entity.Link, error) {
+func FromCreateLink(createLink CreateLink, shortCode string, passHash *string, tags []string, expiresAt *time.Time) (entity.Link, error) {
 	return entity.Link{
 		ShortCode:    shortCode,
 		OriginalURL:  createLink.URL,
@@ -79,7 +79,7 @@ func FromCreateLink(createLink CreateLink, shortCode string, passHash *string, t
 // 3. I should update link in db
 // 4. I should return link
 // 5. Is this a good approach?
-func FromUpdateLink(updateLink PatchLink, passHash *string, tags []entity.Tag, expiresAt *time.Time) (entity.Link, error) {
+func FromUpdateLink(updateLink PatchLink, passHash *string, tags []string, expiresAt *time.Time) (entity.Link, error) {
 	link := entity.Link{}
 
 	if updateLink.URL != nil {
@@ -115,12 +115,6 @@ func ToLinkList(links []entity.Link) []LinkList {
 	var linkList []LinkList
 
 	for _, link := range links {
-		tags := make([]TagEmbedding, 0, len(link.Tags))
-
-		for _, tag := range link.Tags {
-			tags = append(tags, ToTagEmbedding(tag))
-		}
-
 		var expiresAt *string
 		if link.ExpiresAt != nil {
 			v := link.ExpiresAt.Format(config.TIME_FORMAT)
@@ -132,7 +126,7 @@ func ToLinkList(links []entity.Link) []LinkList {
 			ShortCode:   link.ShortCode,
 			OriginalURL: link.OriginalURL,
 			IsActive:    link.IsActive,
-			Tags:        tags,
+			Tags:        link.Tags,
 			CreatedAt:   link.CreatedAt.Format(config.TIME_FORMAT),
 			UpdatedAt:   link.UpdatedAt.Format(config.TIME_FORMAT),
 			ExpiresAt:   expiresAt,
@@ -145,14 +139,9 @@ func ToLinkList(links []entity.Link) []LinkList {
 }
 
 func ToLinkDetails(link entity.Link) LinkDetails {
-	tags := make([]TagEmbedding, 0, len(link.Tags))
-	for _, tag := range link.Tags {
-		tags = append(tags, ToTagEmbedding(tag))
-	}
-
 	var deletedAt *string
-	if link.DeletedAt.Valid {
-		formatted := link.DeletedAt.Time.Format(config.TIME_FORMAT)
+	if link.DeletedAt != nil {
+		formatted := link.DeletedAt.Format(config.TIME_FORMAT)
 		deletedAt = &formatted
 	}
 
@@ -162,16 +151,22 @@ func ToLinkDetails(link entity.Link) LinkDetails {
 		expiresAt = &formatted
 	}
 
+	var updatedAt *string
+	if link.UpdatedAt != nil {
+		formatted := link.UpdatedAt.Format(config.TIME_FORMAT)
+		updatedAt = &formatted
+	}
+
 	return LinkDetails{
-		ID: link.ID,
+		ID:          link.ID,
 		ShortCode:   link.ShortCode,
 		OriginalURL: link.OriginalURL,
 		IsActive:    link.IsActive,
 		IsPrivate:   link.IsPrivate,
 		MaxClicks:   link.MaxClicks,
-		Tags:        tags,
+		Tags:        link.Tags,
 		CreatedAt:   link.CreatedAt.Format(config.TIME_FORMAT),
-		UpdatedAt:   link.UpdatedAt.Format(config.TIME_FORMAT),
+		UpdatedAt:   updatedAt,
 		ExpiresAt:   expiresAt,
 		DeletedAt:   deletedAt,
 	}

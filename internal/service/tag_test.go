@@ -8,7 +8,6 @@ import (
 	"github.com/pewpowder/url-shortener/internal/entity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"gorm.io/gorm"
 )
 
 type TagRepositoryMock struct {
@@ -74,12 +73,12 @@ func TestPatchTag(t *testing.T) {
 				Color: tagColor,
 			},
 			repoResult: entity.Tag{
-				Model: gorm.Model{ID: 1},
+				ID:    1,
 				Name:  tagName,
 				Color: tagColor,
 			},
 			want: entity.Tag{
-				Model: gorm.Model{ID: 1},
+				ID:    1,
 				Name:  tagName,
 				Color: tagColor,
 			},
@@ -96,12 +95,12 @@ func TestPatchTag(t *testing.T) {
 				Color: DEFAULT_COLOR,
 			},
 			repoResult: entity.Tag{
-				Model: gorm.Model{ID: 2},
+				ID:    2,
 				Name:  tagName,
 				Color: DEFAULT_COLOR,
 			},
 			want: entity.Tag{
-				Model: gorm.Model{ID: 2},
+				ID:    2,
 				Name:  tagName,
 				Color: DEFAULT_COLOR,
 			},

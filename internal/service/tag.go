@@ -1,11 +1,12 @@
 package service
 
 import (
+	"time"
+
 	"github.com/pewpowder/url-shortener/internal/container"
 	"github.com/pewpowder/url-shortener/internal/dto"
 	"github.com/pewpowder/url-shortener/internal/entity"
 	"github.com/pewpowder/url-shortener/internal/repository"
-	"gorm.io/gorm"
 )
 
 const DEFAULT_COLOR = "#4f46e5"
@@ -41,10 +42,12 @@ func (ts *tagService) CreateTag(tagDto dto.CreateOrUpdateTag) (entity.Tag, error
 }
 
 func (ts *tagService) UpdateTag(id uint, tagDto dto.CreateOrUpdateTag) (entity.Tag, error) {
+	now := time.Now()
 	tag := entity.Tag{
-		Model: gorm.Model{ID: id},
-		Name:  tagDto.Name,
-		Color: SetDefaultColorIfEmpty(tagDto.Color),
+		ID:        id,
+		UpdatedAt: &now,
+		Name:      tagDto.Name,
+		Color:     SetDefaultColorIfEmpty(tagDto.Color),
 	}
 
 	return ts.repo.UpdateTag(id, tag)

@@ -29,11 +29,12 @@ type PatchTag struct {
 }
 
 type TagResponse struct {
-	ID        uint      `json:"id" validate:"required"`
-	CreatedAt time.Time `json:"created_at" validate:"required"`
-	UpdatedAt time.Time `json:"updated_at" validate:"required"`
-	Name      string    `json:"name" validate:"required,alphanum,max=50"`
-	Color     string    `json:"color" validate:"required,hexcolor"`
+	ID        uint       `json:"id" validate:"required"`
+	CreatedAt time.Time  `json:"created_at" validate:"required"`
+	UpdatedAt *time.Time `json:"updated_at"`
+	DeletedAt *time.Time `json:"deleted_at"`
+	Name      string     `json:"name" validate:"required,alphanum,max=50"`
+	Color     string     `json:"color" validate:"required,hexcolor"`
 }
 
 type TagEmbedding struct {

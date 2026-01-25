@@ -120,46 +120,50 @@ func (ls *linkService) CreateLink(ctx context.Context, createLink dto.CreateLink
 		passHash = &h
 	}
 
-	linkTags := make([]entity.Tag, 0, len(createLink.Tags))
-	if len(createLink.Tags) > 0 {
-		q := dto.TagListQuery{
-			Pagination: dto.Pagination{
-				Page: 1,
-				Size: len(createLink.Tags),
-			},
-			Sort:   dto.Sort{},
-			Filter: &dto.TagFilter{Names: createLink.Tags},
-		}
+	// TODO: remove this?
+	// linkTags := make([]entity.Tag, 0, len(createLink.Tags))
+	// if len(createLink.Tags) > 0 {
+	// 	q := dto.TagListQuery{
+	// 		Pagination: dto.Pagination{
+	// 			Page: 1,
+	// 			Size: len(createLink.Tags),
+	// 		},
+	// 		Sort:   dto.Sort{},
+	// 		Filter: &dto.TagFilter{Names: createLink.Tags},
+	// 	}
 
-		tags, err := ls.tagService.GetTags(q)
-		if err != nil {
-			return entity.Link{}, se.NewServiceError(
-				"failed to get tags",
-				se.ErrCodeInternal,
-				se.GetCodeTextByCode(se.ErrCodeInternal),
-				err,
-			)
-		}
+	// 	tags, err := ls.tagService.GetTags(q)
+	// 	if err != nil {
+	// 		return entity.Link{}, se.NewServiceError(
+	// 			"failed to get tags",
+	// 			se.ErrCodeInternal,
+	// 			se.GetCodeTextByCode(se.ErrCodeInternal),
+	// 			err,
+	// 		)
+	// 	}
 
-		if (len(createLink.Tags) - len(tags)) != 0 {
-			tagsNames := make([]string, 0, len(tags))
-			for _, tag := range tags {
-				tagsNames = append(tagsNames, tag.Name)
-			}
+	// 	if (len(createLink.Tags) - len(tags)) != 0 {
+	// 		tagsNames := make([]string, 0, len(tags))
+	// 		for _, tag := range tags {
+	// 			tagsNames = append(tagsNames, tag.Name)
+	// 		}
 
-			nonExistedTags := utils.Difference(createLink.Tags, tagsNames)
-			return entity.Link{}, se.NewServiceError(
-				fmt.Sprintf("Not found following tags: %v", nonExistedTags),
-				se.ErrCodeBadRequest,
-				se.GetCodeTextByCode(se.ErrCodeBadRequest),
-				errors.New("not found tags"),
-			)
-		}
+	// 		nonExistedTags := utils.Difference(createLink.Tags, tagsNames)
+	// 		return entity.Link{}, se.NewServiceError(
+	// 			fmt.Sprintf("Not found following tags: %v", nonExistedTags),
+	// 			se.ErrCodeBadRequest,
+	// 			se.GetCodeTextByCode(se.ErrCodeBadRequest),
+	// 			errors.New("not found tags"),
+	// 		)
+	// 	}
 
-		linkTags = tags
-	}
+	// 	linkTags = tags
+	// }
 
-	// TODO: FINISH CREATE LINK METHOD (GENERATE PASSWORD PROPERLY)
+	// tagNames := make(entity.Tags, 0, len(linkTags))
+	// for _, tag := range linkTags {
+	// 	tagNames = append(tagNames, tag.Name)
+	// }
 
 	link := entity.Link{
 		ShortCode:    shortCode,
@@ -168,7 +172,7 @@ func (ls *linkService) CreateLink(ctx context.Context, createLink dto.CreateLink
 		IsActive:     isActive,
 		PasswordHash: passHash,
 		MaxClicks:    createLink.MaxClicks,
-		Tags:         linkTags,
+		Tags:         createLink.Tags,
 		ExpiresAt:    expiresAt,
 	}
 
